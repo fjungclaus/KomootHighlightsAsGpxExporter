@@ -12,6 +12,7 @@
 * Finish code for CSV export
 * About page
 * Help page
+* Upload some screen shots to Github
 
 ## History
 * 0.1, 2021-08-25, First release via Github
