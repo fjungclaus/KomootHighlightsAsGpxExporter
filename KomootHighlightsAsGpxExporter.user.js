@@ -10,8 +10,7 @@
 // @grant        GM_addStyle
 // @run-at       document-idle
 // // @run-at context-menu
-
-// ==UserScript==
+// ==/UserScript==
 
 
 // Some useful docs
@@ -63,7 +62,7 @@ td, th {
 `);
 
 
-/* jquery CSS */
+// Add jquery CSS
 $("head").append (
     '<link '
   + 'href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" '
@@ -140,7 +139,7 @@ function sanitizeText(text) {
     return text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n]/gu, '').replace(/&/g, '');;
 }
 
-/* Action ... */
+// The main action ...
 const kmtProps = unsafeWindow.kmtBoot.getProps();
 const tour = kmtProps.page._embedded.tour;
 var text, gpxText;
@@ -195,7 +194,7 @@ $("body").append(text);
 $("#dialog").dialog({ autoOpen: false, maxHeight: 640, width: 1024, maxWidth: 1024, close: function() { showDebug = false; } });
 
 
-// quick and dirty adding a menu to the top ...
+// Quick and dirty adding a menu
 var countDown = 20; /* Retry for 20 * 1000ms */
 function addMenu() {
     var gpxButton = document.querySelector("#gpx-button");
@@ -224,6 +223,5 @@ function addMenu() {
     }
 }
 
+// Insert menu into Komoot page
 setTimeout(addMenu, 1000);
-
-// ==/UserScript==
