@@ -8,11 +8,12 @@
 
 ## Todos
 * Have distance across the track of the highlights in the waypoint and CSV
-* Allow exporting waypoints plus the GPX track itself in a single GPX file
+* ~~Allow exporting waypoints plus the GPX track itself in a single GPX file~~
 * Finish code for CSV export
 * About page
 * Help page
 * Upload some screen shots to Github
 
 ## History
+* 0.4, 2021-08-27, Also allow exporting the tours track itself
 * 0.1, 2021-08-25, First release via Github
