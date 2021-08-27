@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.4
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank
 // @match        https://*.komoot.de/tour/*
@@ -30,12 +30,18 @@
 
 'use strict';
 
-const VERSION = "0.1";
+
+const VERSION = "0.4";
 
 
 var fileName = "gpx.gpx";
 var showDebug = false;
 var $ = window.$; // just to prevent warnings about "$ not defined" in tampermonkey editor
+var dbgText = "", gpxWptText = "", gpxTrkText = "";
+const kmtProps = unsafeWindow.kmtBoot.getProps();
+const tour = kmtProps.page._embedded.tour;
+
+
 
 /* CSS */
 GM_addStyle(`
@@ -69,19 +75,27 @@ $("head").append (
   + 'rel="stylesheet" type="text/css">'
 );
 
-function getGpxHeader() {
-    var ret= `<?xml version="1.0" encoding="utf-8"?><gpx creator="Garmin Desktop App" version="1.1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/WaypointExtension/v1 http://www8.garmin.com/xmlschemas/WaypointExtensionv1.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www8.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/ActivityExtension/v1 http://www8.garmin.com/xmlschemas/ActivityExtensionv1.xsd http://www.garmin.com/xmlschemas/AdventuresExtensions/v1 http://www8.garmin.com/xmlschemas/AdventuresExtensionv1.xsd http://www.garmin.com/xmlschemas/PressureExtension/v1 http://www.garmin.com/xmlschemas/PressureExtensionv1.xsd http://www.garmin.com/xmlschemas/TripExtensions/v1 http://www.garmin.com/xmlschemas/TripExtensionsv1.xsd http://www.garmin.com/xmlschemas/TripMetaDataExtensions/v1 http://www.garmin.com/xmlschemas/TripMetaDataExtensionsv1.xsd http://www.garmin.com/xmlschemas/ViaPointTransportationModeExtensions/v1 http://www.garmin.com/xmlschemas/ViaPointTransportationModeExtensionsv1.xsd http://www.garmin.com/xmlschemas/CreationTimeExtension/v1 http://www.garmin.com/xmlschemas/CreationTimeExtensionsv1.xsd http://www.garmin.com/xmlschemas/AccelerationExtension/v1 http://www.garmin.com/xmlschemas/AccelerationExtensionv1.xsd http://www.garmin.com/xmlschemas/PowerExtension/v1 http://www.garmin.com/xmlschemas/PowerExtensionv1.xsd http://www.garmin.com/xmlschemas/VideoExtension/v1 http://www.garmin.com/xmlschemas/VideoExtensionv1.xsd" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:wptx1="http://www.garmin.com/xmlschemas/WaypointExtension/v1" xmlns:gpxtrx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" xmlns:trp="http://www.garmin.com/xmlschemas/TripExtensions/v1" xmlns:adv="http://www.garmin.com/xmlschemas/AdventuresExtensions/v1" xmlns:prs="http://www.garmin.com/xmlschemas/PressureExtension/v1" xmlns:tmd="http://www.garmin.com/xmlschemas/TripMetaDataExtensions/v1" xmlns:vptm="http://www.garmin.com/xmlschemas/ViaPointTransportationModeExtensions/v1" xmlns:ctx="http://www.garmin.com/xmlschemas/CreationTimeExtension/v1" xmlns:gpxacc="http://www.garmin.com/xmlschemas/AccelerationExtension/v1" xmlns:gpxpx="http://www.garmin.com/xmlschemas/PowerExtension/v1" xmlns:vidx1="http://www.garmin.com/xmlschemas/VideoExtension/v1">`;
-    ret += `
-<metadata>
-  <link href="https://dl4xj.com">
-     <text>tapermonkey, KomootHighlightsAsGpxExporter, `;
+function getGpxHeader(name) {
+  var ret;
+  ret = `<?xml version='1.0' encoding='UTF-8'?>
+<gpx version="1.1" creator="https://www.komoot.de" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>`;
+  ret+= name;
+  ret+= `</name>
+    <author>
+      <link href="`;
+  ret+= document.URL;
+    ret += `">
+        <text>Tampermonkey, https://dl4xj.de, KomootHighlightsAsGpxExporter, V`;
     ret+= VERSION;
     ret+=`</text>
-  </link>
-  <time>2021-08-22T00:00:00Z</time>
-</metadata>
+        <type>text/html</type>
+      </link>
+    </author>
+ </metadata>
 `;
-    return ret;
+ return ret;
 }
 
 function getGpxFooter() {
@@ -91,15 +105,39 @@ function getGpxFooter() {
 
 function getGpxWaypoint(name, lat, lng, alt, desc) {
     var ret;
-    ret = '<wpt lat="' + lat + '" lon="' + lng + '">\n';
-    ret+= '  <ele>' + alt + '</ele>\n';
-    ret+= '  <name>' + name + '</name>\n';
-    ret+= '  <desc>' + desc + '</desc>\n';
-    ret+= '  <sym>Flag, Blue</sym>\n';
-    ret+= '</wpt>\n';
+    ret = ' <wpt lat="' + lat + '" lon="' + lng + '">\n';
+    ret+= '   <ele>' + alt + '</ele>\n';
+    ret+= '   <name>' + name + '</name>\n';
+    ret+= '   <desc>' + desc + '</desc>\n';
+    ret+= '   <sym>Flag, Blue</sym>\n';
+    ret+= ' </wpt>\n';
     return ret;
 }
 
+function getGpxTrkpointHeader(name) {
+    var ret;
+    ret = ' <trk>\n';
+    ret+= '  <name>' + name + '</name>\n';
+    ret+= '  <trkseg>\n';
+    return ret;
+}
+
+function getGpxTrkpointFooter() {
+    var ret;
+    ret = '  </trkseg>\n';
+    ret+= ' </trk>\n';
+    return ret;
+}
+
+function getGpxTrkpoint(coord) {
+    var ret;
+    ret = '   <trkpt lat="' + coord.lat + '" lon="' + coord.lng + '">\n';
+    ret+= '     <ele>' + coord.alt + '</ele>\n';
+    ret+= '   </trkpt>\n';
+    return ret;
+}
+
+// Save given data to given filename
 var saveData = (function () {
     var a = document.createElement("a");
     document.body.appendChild(a);
@@ -115,19 +153,36 @@ var saveData = (function () {
 }());
 
 function clickButtonDbg(ev) {
+    createDebugText();
+    $("body").append(dbgText);
+    $("#dialog").dialog({ autoOpen: false, maxHeight: 640, width: 1024, maxWidth: 1024, close: function() { showDebug = false; } });
     showDebug = !showDebug;
     $("#dialog").dialog(showDebug ? 'open' : 'close');
 }
 
 function clickButtonGpx(ev) {
-    saveData(gpxText, fileName);
+    var txt;
+    createGpxWptText();
+    txt = getGpxHeader("Tour=" + tour.id + ", " + sanitizeText(tour.name));
+    txt+= gpxWptText;
+
+    if (ev.currentTarget.id == "gpx-full-button") {
+        createGpxTrkText();
+        txt+= getGpxTrkpointHeader(sanitizeText(tour.name));
+        txt+= gpxTrkText;
+        txt+= getGpxTrkpointFooter();
+    }
+
+    txt+= getGpxFooter();
+    saveData(txt, fileName);
+
 }
 
 function sanitizeFileName(name) {
     return name.replace(/ /g, "_").replace(/[^\p{L}\p{N}^$\n]/gu, '');
 }
 
-function sanitizeText(text) {
+function sanitizeText(txt) {
     /*
       Removes all symbols except:
        \p{L} - all letters from any language
@@ -136,66 +191,97 @@ function sanitizeText(text) {
        \p{Z} - whitespace separators
        ^$\n  - add any symbols you want to keep
     */
-    return text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n]/gu, '').replace(/&/g, '');;
+    return txt.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n]/gu, '').replace(/&/g, '');;
 }
 
-// The main action ...
-const kmtProps = unsafeWindow.kmtBoot.getProps();
-const tour = kmtProps.page._embedded.tour;
-var text, gpxText;
-text = '<div id="dialog" title="Highlights to GPX">';
-gpxText = getGpxHeader();
-if (tour._embedded.way_points._embedded.items.length > 0) {
-    fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
-    text+= '  <b>Tour #' + tour.id + ', ' + tour.name + '</b>';
-    text+= '  <table>';
-    text+= '<tr><th>#</th><th>Type</th><th>Name</th><th>Up</th><th>Down</th><th>Info</th><th>Lattitude</th><th>Longitude</th><th>Altitude</th><tr>';
-    for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
-        if (tour._embedded.way_points._embedded.items[i].type == "highlight") {
-            cnt++;
-            const highlight = tour._embedded.way_points._embedded.items[i]._embedded.reference;
-            console.log("i=" + i);
-            text+= '<tr>';
-            text+= '<td>' + cnt + '</td>';
-            text+= '<td>' + highlight.type.replace('highlight_','') + '</td>';
-            text+= '<td>' + highlight.name + '</td>';
-            var desc = "";
-            try {
-                const tips = highlight._embedded.tips._embedded;
-                if (tips.items.length > 0) {
-                    text+= '<td>' + tips.items[0].rating.up + '</td>';
-                    text+= '<td>' + tips.items[0].rating.down + '</td>';
-                    text+= '<td>' + tips.items[0].text + '</td>';
-                    //desc = sanitizeText(tips.items[0].text);
-                    desc = tips.items[0].text;
+// jQuery Dialog with some debug data
+function createDebugText() {
+    if (dbgText == "") {
+        dbgText = '<div id="dialog" title="Highlights to GPX">';
+        if (tour._embedded.way_points._embedded.items.length > 0) {
+            fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
+            dbgText+= '  <b>Tour #' + tour.id + ', ' + tour.name + '</b>';
+            dbgText+= '  <table>';
+            dbgText+= '<tr><th>#</th><th>Type</th><th>Name</th><th>Up</th><th>Down</th><th>Info</th><th>Lattitude</th><th>Longitude</th><th>Altitude</th><tr>';
+            for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
+                if (tour._embedded.way_points._embedded.items[i].type == "highlight") {
+                    cnt++;
+                    const highlight = tour._embedded.way_points._embedded.items[i]._embedded.reference;
+                    console.log("i=" + i);
+                    dbgText+= '<tr>';
+                    dbgText+= '<td>' + cnt + '</td>';
+                    dbgText+= '<td>' + highlight.type.replace('highlight_','') + '</td>';
+                    dbgText+= '<td>' + highlight.name + '</td>';
+                    try {
+                        const tips = highlight._embedded.tips._embedded;
+                        if (tips.items.length > 0) {
+                            dbgText+= '<td>' + tips.items[0].rating.up + '</td>';
+                            dbgText+= '<td>' + tips.items[0].rating.down + '</td>';
+                            dbgText+= '<td>' + tips.items[0].text + '</td>';
+                        }
+                    }
+                    catch {
+                        dbgText+= '<td>%</td>';
+                        dbgText+= '<td>%</td>';
+                        dbgText+= '<td>%</td>';
+                    }
+                    dbgText+= '<td>' + highlight.location.lat + '</td>';
+                    dbgText+= '<td>' + highlight.location.lng + '</td>';
+                    dbgText+= '<td>' + highlight.location.alt + '</td>';
+
+                    dbgText+= '</tr>';
                 }
             }
-            catch {
-                text+= '<td>%</td>';
-                text+= '<td>%</td>';
-                text+= '<td>%</td>';
-            }
-            text+= '<td>' + highlight.location.lat + '</td>';
-            text+= '<td>' + highlight.location.lng + '</td>';
-            text+= '<td>' + highlight.location.alt + '</td>';
+            dbgText+= '  </table>';
+        } else {
+            dbgText+= '<p>Hmmm, a tour without any point or highlight!?</p>';
+        }
+        dbgText+= '</div>';
 
-            text+= '</tr>';
-            gpxText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, highlight.location.alt, desc);
+    }
+}
+
+// Get all highlights of tour as GPX waypoints
+function createGpxWptText() {
+    if (gpxWptText == "") {
+        if (tour._embedded.way_points._embedded.items.length > 0) {
+            fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
+            for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
+                if (tour._embedded.way_points._embedded.items[i].type == "highlight") {
+                    cnt++;
+                    const highlight = tour._embedded.way_points._embedded.items[i]._embedded.reference;
+                    console.log("i=" + i);
+                    var desc = "";
+                    try {
+                        const tips = highlight._embedded.tips._embedded;
+                        if (tips.items.length > 0) {
+                            //desc = sanitizeText(tips.items[0].text);
+                            desc = tips.items[0].text;
+                        }
+                    }
+                    catch {
+                        desc = "";
+                    }
+                    gpxWptText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, highlight.location.alt, desc);
+                }
+            }
         }
     }
-    text+= '  </table>';
-} else {
-    text+= '<p>Hmmm, a tour without any point or highlight!?</p>';
 }
-text+= '</div>';
-gpxText+= getGpxFooter();
 
-$("body").append(text);
-$("#dialog").dialog({ autoOpen: false, maxHeight: 640, width: 1024, maxWidth: 1024, close: function() { showDebug = false; } });
-
+// Get all points of the track itself
+function createGpxTrkText() {
+    if (tour._embedded.coordinates.items.length > 0) {
+        var coord;
+        for (var i = 0; i < tour._embedded.coordinates.items.length; i++) {
+            coord = tour._embedded.coordinates.items[i];
+            gpxTrkText+= getGpxTrkpoint(coord);
+        }
+    }
+}
 
 // Quick and dirty adding a menu
-var countDown = 20; /* Retry for 20 * 1000ms */
+var countDown = 20; /* Retry to insert our menu for 20 * 1000ms */
 function addMenu() {
     var gpxButton = document.querySelector("#gpx-button");
     if (!gpxButton) {
@@ -207,6 +293,7 @@ function addMenu() {
         add.innerHTML = `
   <h2>Tampermonkey: Save highlights as GPX</h2>
   <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp;
+  <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" >Save as GPX (+track) ...</button>&nbsp;
   <button class="ui-button ui-widget ui-corner-all" id="csv-button" >Save as CSV ...</button>&nbsp;
   <button class="ui-button ui-widget ui-corner-all" id="dbg-button" >DEBUG ...</button>&nbsp;
 `;
@@ -215,6 +302,7 @@ function addMenu() {
         pos.prepend(add); // todo ...
         $("#dbg-button").click(clickButtonDbg);
         $("#gpx-button").click(clickButtonGpx);
+        $("#gpx-full-button").click(clickButtonGpx);
     }
 
     countDown--;
@@ -225,3 +313,5 @@ function addMenu() {
 
 // Insert menu into Komoot page
 setTimeout(addMenu, 1000);
+
+
