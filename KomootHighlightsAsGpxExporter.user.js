@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
-// @namespace    http://tampermonkey.net/
-// @version      0.5
+// @namespace    https://github.com/fjungclaus
+// @version      0.6
 // @description  Save Komoot Tour Highlights as GPX-File
-// @author       Frank
+// @author       Frank Jungclaus, DL4XJ
+// @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
+// @license      GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @match        https://*.komoot.de/tour/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
