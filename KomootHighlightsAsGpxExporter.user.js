@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank
 // @match        https://*.komoot.de/tour/*
@@ -13,25 +13,23 @@
 // ==/UserScript==
 
 
-// Some useful docs
-// https://jsfiddle.net/
-// https://www.tampermonkey.net/documentation.php
-// https://developer.mozilla.org/en-US/docs/Web/API
-// https://python.plainenglish.io/get-komoot-tour-data-without-api-143df64e51fa
-// https://www.torsten-traenkner.de/javascript/greasemonkey/heise.php
-// https://api.jqueryui.com/dialog/
-// https://de.wikipedia.org/wiki/GPS_Exchange_Format
-// https://en.wikipedia.org/wiki/GPS_Exchange_Format
-// https://stackoverflow.com/questions/34101871/save-data-using-greasemonkey-tampermonkey-for-later-retrieval
-// https://github.com/andreasbrett/komoot-unlocked-regions/blob/master/render_unlocked_komoot_regions.user.js
-// https://gist.github.com/zhangolve/dece7434bcc48ecd615df319a3b3438e
-// https://stackoverflow.com/questions/6392103/storing-into-file-using-javascript-greasemonkey
+// *** Some useful docs ***
+//   https://jsfiddle.net/
+//   https://www.tampermonkey.net/documentation.php
+//   https://developer.mozilla.org/en-US/docs/Web/API
+//   https://python.plainenglish.io/get-komoot-tour-data-without-api-143df64e51fa
+//   https://www.torsten-traenkner.de/javascript/greasemonkey/heise.php
+//   https://api.jqueryui.com/dialog/
+//   https://de.wikipedia.org/wiki/GPS_Exchange_Format
+//   https://en.wikipedia.org/wiki/GPS_Exchange_Format
+//   https://stackoverflow.com/questions/34101871/save-data-using-greasemonkey-tampermonkey-for-later-retrieval
+//   https://github.com/andreasbrett/komoot-unlocked-regions/blob/master/render_unlocked_komoot_regions.user.js
+//   https://gist.github.com/zhangolve/dece7434bcc48ecd615df319a3b3438e
+//   https://stackoverflow.com/questions/6392103/storing-into-file-using-javascript-greasemonkey
 
 
 'use strict';
 
-
-const VERSION = "0.4";
 
 
 var fileName = "gpx.gpx";
@@ -40,6 +38,8 @@ var $ = window.$; // just to prevent warnings about "$ not defined" in tampermon
 var dbgText = "", gpxWptText = "", gpxTrkText = "";
 const kmtProps = unsafeWindow.kmtBoot.getProps();
 const tour = kmtProps.page._embedded.tour;
+const VERSION = GM_info.script.version;
+
 
 
 
@@ -66,6 +66,7 @@ td, th {
   color: #f00;
 }
 `);
+
 
 
 // Add jquery CSS
@@ -131,8 +132,11 @@ function getGpxTrkpointFooter() {
 
 function getGpxTrkpoint(coord) {
     var ret;
+    var t= new Date(tour.date);
+    t.setSeconds(t.getSeconds() + coord.t / 1000); // coord.t is in milli seconds!
     ret = '   <trkpt lat="' + coord.lat + '" lon="' + coord.lng + '">\n';
     ret+= '     <ele>' + coord.alt + '</ele>\n';
+    ret+= '     <time>' + t.toISOString() + '</time>\n';
     ret+= '   </trkpt>\n';
     return ret;
 }
