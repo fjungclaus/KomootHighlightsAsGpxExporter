@@ -15,5 +15,6 @@
 * Upload some screen shots to Github
 
 ## History
+* 0.5, 2021-08-30, Added timestamps to track elements
 * 0.4, 2021-08-27, Also allow exporting the tours track itself
 * 0.1, 2021-08-25, First release via Github
