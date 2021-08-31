@@ -1,8 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.6
-// @description  Save Komoot Tour Highlights as GPX-File
+// @version      0.8// @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
 // @license      GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
@@ -88,7 +87,7 @@ function getGpxHeader(name) {
   ret+= `</name>
     <author>
       <link href="`;
-  ret+= document.URL;
+  ret+= document.URL.match(/https:\/\/.*komoot.*\/[0-9]+/);
     ret += `">
         <text>Tampermonkey, https://dl4xj.de, KomootHighlightsAsGpxExporter, V`;
     ret+= VERSION;
