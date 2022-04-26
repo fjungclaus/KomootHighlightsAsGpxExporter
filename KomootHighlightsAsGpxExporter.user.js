@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9
+// @version      0.9.1
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -49,7 +49,7 @@ const VERSION = GM_info.script.version;
 GM_addStyle(`
 table {
   border-collapse: collapse;
-  width: 800px;
+  width: 1200px;
 }
 td, th {
   border: 1px dashed #000;
@@ -158,10 +158,14 @@ var saveData = (function () {
     };
 }());
 
+function clickButtonCSV(ev) {
+    alert("Not yet implemented ...");
+}
+
 function clickButtonDbg(ev) {
     createDebugText();
     $("body").append(dbgText);
-    $("#dialog").dialog({ autoOpen: false, maxHeight: 640, width: 1024, maxWidth: 1024, close: function() { showDebug = false; } });
+    $("#dialog").dialog({ autoOpen: false, maxHeight: 640, width: 1260, maxWidth: 1260, close: function() { showDebug = false; } });
     showDebug = !showDebug;
     $("#dialog").dialog(showDebug ? 'open' : 'close');
 }
@@ -196,8 +200,14 @@ function sanitizeText(txt) {
        \p{P} - punctuation
        \p{Z} - whitespace separators
        ^$\n  - add any symbols you want to keep
+
+       .replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n]/gu, '').replace(/&/g, '');
     */
-    return txt.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n]/gu, '').replace(/&/g, '');;
+    return txt.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&apos;');
 }
 
 // jQuery Dialog with some debug data
@@ -213,7 +223,7 @@ function createDebugText() {
                 if (tour._embedded.way_points._embedded.items[i].type == "highlight") {
                     cnt++;
                     const highlight = tour._embedded.way_points._embedded.items[i]._embedded.reference;
-                    console.log("i=" + i);
+                    console.log("H:i=" + i + "cnt=" + cnt);
                     dbgText+= '<tr>';
                     dbgText+= '<td>' + cnt + '</td>';
                     dbgText+= '<td>' + highlight.type.replace('highlight_','') + '</td>';
@@ -224,17 +234,41 @@ function createDebugText() {
                             dbgText+= '<td>' + tips.items[0].rating.up + '</td>';
                             dbgText+= '<td>' + tips.items[0].rating.down + '</td>';
                             dbgText+= '<td>' + tips.items[0].text + '</td>';
+                        } else {
+                            dbgText+= '<td>%</td>';
+                            dbgText+= '<td>%</td>';
+                            dbgText+= '<td>%</td>';
                         }
                     }
                     catch {
-                        dbgText+= '<td>%</td>';
-                        dbgText+= '<td>%</td>';
-                        dbgText+= '<td>%</td>';
+                        dbgText+= '<td>X</td>';
+                        dbgText+= '<td>X</td>';
+                        dbgText+= '<td>X</td>';
                     }
                     dbgText+= '<td>' + highlight.location.lat + '</td>';
                     dbgText+= '<td>' + highlight.location.lng + '</td>';
                     dbgText+= '<td>' + highlight.location.alt + '</td>';
 
+                    dbgText+= '</tr>';
+                } else if (tour._embedded.way_points._embedded.items[i].type == "poi") {
+                    cnt++;
+                    const poi = tour._embedded.way_points._embedded.items[i]._embedded.reference;
+                    console.log("P:i=" + i + "cnt=" + cnt);
+                    dbgText+= '<tr>';
+                    dbgText+= '<td>' + cnt + '</td>';
+                    dbgText+= '<td>POI</td>';
+                    dbgText+= '<td>' + poi.name + '</td>';
+                    dbgText+= '<td>-</td>';
+                    dbgText+= '<td>-</td>';
+                    dbgText+= '<td>';
+                    for(var j = 0; j < poi._embedded.details.items.length; j++) {
+                        dbgText += '<b>' + poi._embedded.details.items[j].key + ":</b> " + sanitizeText(poi._embedded.details.items[j].formatted);
+                        dbgText += '<br/>';
+                    }
+                    dbgText+= '</td>';
+                    dbgText+= '<td>' + poi.location.lat + '</td>';
+                    dbgText+= '<td>' + poi.location.lng + '</td>';
+                    dbgText+= '<td>' + poi.location.alt + '</td>';
                     dbgText+= '</tr>';
                 }
             }
@@ -253,7 +287,8 @@ function createGpxWptText() {
         if (tour._embedded.way_points._embedded.items.length > 0) {
             fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
             for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
-                if (tour._embedded.way_points._embedded.items[i].type == "highlight") {
+                if (tour._embedded.way_points._embedded.items[i].type == "highlight" ||
+                    tour._embedded.way_points._embedded.items[i].type == "poi") {
                     cnt++;
                     const highlight = tour._embedded.way_points._embedded.items[i]._embedded.reference;
                     console.log("i=" + i);
@@ -261,8 +296,7 @@ function createGpxWptText() {
                     try {
                         const tips = highlight._embedded.tips._embedded;
                         if (tips.items.length > 0) {
-                            //desc = sanitizeText(tips.items[0].text);
-                            desc = tips.items[0].text;
+                            desc = sanitizeText(tips.items[0].text);
                         }
                     }
                     catch {
@@ -286,18 +320,40 @@ function createGpxTrkText() {
     }
 }
 
+
+function selectorContainsText(selector, text) {
+  var elements = document.querySelectorAll(selector);
+  return Array.prototype.filter.call(elements, function(element){
+    return RegExp(text).test(element.textContent);
+  });
+}
+
+// "//a[contains(@href, '/highlight/')]",
+//         text = text + node.getAttribute('href') + "\n";
+// Subnode: . vor // sonst doch ganze document!
+function subEval(xpath, node)
+{
+    // !!! trailing '.' else full document !!!
+    return document.evaluate(xpath, node, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+}
+
+
 // Quick and dirty adding a menu
-var countDown = 20; /* Retry to insert our menu for 20 * 1000ms */
+var countDown = 30; /* Retry to insert our menu for 30 * 1000ms */
 function addMenu() {
-    var gpxButton = document.querySelector("#gpx-button");
-    if (!gpxButton) {
+    // check if there is a special SVG with title "loading"
+    var stillLoading = document.querySelector("#pageMountNode > div > div:nth-child(4) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-0 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div > div.tw-mb-6.tw-hidden.lg\\:tw-block > div > div:nth-child(2) > div > ul > li:nth-child(2) > div > button > div > div.css-1i3yx2s > div > div > svg > title");
+
+    console.log("addMenu:" + countDown + ' stillLoading=' + (stillLoading == null ? "No" : "Yes"));
+
+    if (!stillLoading) {
         var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-0 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div > div:nth-child(1)");
         if (!pos) {
             pos = document.querySelector("body"); // fallback position at first element of body ...
         }
         var add = document.createElement('div');
         add.innerHTML = `
-  <h2>Tampermonkey: Save highlights as GPX</h2>
+  <h2>Tampermonkey: Save highlights + POI as GPX</h2>
   <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp;
   <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" >Save as GPX (+track) ...</button>&nbsp;
   <button class="ui-button ui-widget ui-corner-all" id="csv-button" >Save as CSV ...</button>&nbsp;
@@ -309,6 +365,9 @@ function addMenu() {
         $("#dbg-button").click(clickButtonDbg);
         $("#gpx-button").click(clickButtonGpx);
         $("#gpx-full-button").click(clickButtonGpx);
+        $("#csv-button").click(clickButtonCSV);
+        countDown = 0;
+        console.log("addMenu ... Done ...");
     }
 
     countDown--;
@@ -317,7 +376,54 @@ function addMenu() {
     }
 }
 
-// Insert menu into Komoot page
+// Try to insert out menu into Komoot page
 setTimeout(addMenu, 1000);
+
+
+(function() {
+    'use strict';
+
+    if (false) {
+        // debug only
+        var test;
+        test = subEval("//script/text()", document.body);
+        for (var x = 0; x < test.snapshotLength; x++) {
+            console.log(test.snapshotItem(x));
+        }
+    }
+
+    var courseObjs, node;
+    // Get all divs with class='tw-mb-6'
+    courseObjs = subEval("//div[@class='tw-mb-6']", document.body);
+
+    for (var i = 0; i < courseObjs.snapshotLength; i++) {
+        var subObjs, objs, url, name, type, dist;
+
+        // Is course object a highlight?
+        subObjs = subEval(".//a[contains(@href, '/highlight/')]", courseObjs.snapshotItem(i));
+        if (subObjs.snapshotLength > 0) {
+            // Yes, it is a highlight. Get link and name of highlight
+            url = subObjs.snapshotItem(0).getAttribute('href');
+            name = subObjs.snapshotItem(0).outerText;
+            // Get type of highlight
+            objs = subEval(".//p[@class='tw-text-secondary tw-mb-0']", courseObjs.snapshotItem(i));
+            if (objs.snapshotLength > 0) {
+                type = objs.snapshotItem(0).innerText;
+            } else {
+                type = ""
+            }
+            // Get distance of highlight
+            objs = subEval(".//div[@class='tw-mt-1 tw-text-secondary']", courseObjs.snapshotItem(i));
+            if (objs.snapshotLength > 0) {
+                dist = objs.snapshotItem(0).innerText;
+            } else {
+                dist = ""
+            }
+            console.log(url + ":" + name + ":" + type + ":" + dist);
+            }
+    }
+    //alert(text);
+})();
+
 
 
