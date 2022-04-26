@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.1
+// @version      0.9.2
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -38,6 +38,7 @@ var fileName = "gpx.gpx";
 var showDebug = false;
 var $ = window.$; // just to prevent warnings about "$ not defined" in tampermonkey editor
 var dbgText = "", gpxWptText = "", gpxTrkText = "";
+var objDistances = [];
 const kmtProps = unsafeWindow.kmtBoot.getProps();
 const tour = kmtProps.page._embedded.tour;
 const VERSION = GM_info.script.version;
@@ -218,7 +219,7 @@ function createDebugText() {
             fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
             dbgText+= '  <b>Tour #' + tour.id + ', ' + tour.name + '</b>';
             dbgText+= '  <table>';
-            dbgText+= '<tr><th>#</th><th>Type</th><th>Name</th><th>Up</th><th>Down</th><th>Info</th><th>Lattitude</th><th>Longitude</th><th>Altitude</th><tr>';
+            dbgText+= '<tr><th>#</th><th>Type</th><th>Name</th><th>Up</th><th>Down</th><th>Info</th><th>Lattitude</th><th>Longitude</th><th>Altitude</th><th>Dist</th><tr>';
             for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
                 if (tour._embedded.way_points._embedded.items[i].type == "highlight") {
                     cnt++;
@@ -248,6 +249,7 @@ function createDebugText() {
                     dbgText+= '<td>' + highlight.location.lat + '</td>';
                     dbgText+= '<td>' + highlight.location.lng + '</td>';
                     dbgText+= '<td>' + highlight.location.alt + '</td>';
+                    dbgText+= '<td>' + objDistances.find(element => (element.ref == highlight.id)).dst + '</td>';
 
                     dbgText+= '</tr>';
                 } else if (tour._embedded.way_points._embedded.items[i].type == "poi") {
@@ -269,6 +271,7 @@ function createDebugText() {
                     dbgText+= '<td>' + poi.location.lat + '</td>';
                     dbgText+= '<td>' + poi.location.lng + '</td>';
                     dbgText+= '<td>' + poi.location.alt + '</td>';
+                    dbgText+= '<td>' + "x" + '</td>';
                     dbgText+= '</tr>';
                 }
             }
@@ -420,7 +423,12 @@ setTimeout(addMenu, 1000);
                 dist = ""
             }
             console.log(url + ":" + name + ":" + type + ":" + dist);
+            try {
+                objDistances.push( {ref: url.replace(/\/.*\//, ""), name: sanitizeText(name), dst: dist });
             }
+            catch {
+            }
+        }
     }
     //alert(text);
 })();
