@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.2
+// @version      0.9.4
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -42,7 +42,7 @@ var objDistances = [];
 const kmtProps = unsafeWindow.kmtBoot.getProps();
 const tour = kmtProps.page._embedded.tour;
 const VERSION = GM_info.script.version;
-
+const MAX_RETRY=60; // retries to install our menu (MAX_RETRY * 500ms)
 
 
 
@@ -342,40 +342,42 @@ function subEval(xpath, node)
 
 
 // Quick and dirty adding a menu
-var countDown = 30; /* Retry to insert our menu for 30 * 1000ms */
+var retry = 0; /* Retries to insert our menu */
 function addMenu() {
     // check if there is a special SVG with title "loading"
-    var stillLoading = document.querySelector("#pageMountNode > div > div:nth-child(4) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-0 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div > div.tw-mb-6.tw-hidden.lg\\:tw-block > div > div:nth-child(2) > div > ul > li:nth-child(2) > div > button > div > div.css-1i3yx2s > div > div > svg > title");
+    var stillLoading = selectorContainsText("title", "loading"); // currently 6 at the beginning ... if done 3 ...
 
-    console.log("addMenu:" + countDown + ' stillLoading=' + (stillLoading == null ? "No" : "Yes"));
+    console.log("addMenu:" + retry + ' stillLoading=' + stillLoading.length);
 
-    if (!stillLoading) {
-        var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-0 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div > div:nth-child(1)");
-        if (!pos) {
-            pos = document.querySelector("body"); // fallback position at first element of body ...
-        }
+    if (stillLoading.length <= 3 || retry >= MAX_RETRY) {
         var add = document.createElement('div');
-        add.innerHTML = `
-  <h2>Tampermonkey: Save highlights + POI as GPX</h2>
+        add.innerHTML = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b> (' + retry.toString() + '/' + MAX_RETRY.toString() + ')</h2>' ;
+        add.innerHTML += `
   <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp;
   <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" >Save as GPX (+track) ...</button>&nbsp;
   <button class="ui-button ui-widget ui-corner-all" id="csv-button" >Save as CSV ...</button>&nbsp;
   <button class="ui-button ui-widget ui-corner-all" id="dbg-button" >DEBUG ...</button>&nbsp;
 `;
-        // add.style.cssText += "padding: 0 0 5px 0;";
+        // "per copy JS path" ...
+        var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div")
+        if (!pos) {
+            pos = document.querySelector("body"); // fallback position at first element of body ...
+            add.style.cssText += "padding: 75px 0 0 0;";
+
+        }
         add.setAttribute('id', 'menu-add');
         pos.prepend(add); // todo ...
         $("#dbg-button").click(clickButtonDbg);
         $("#gpx-button").click(clickButtonGpx);
         $("#gpx-full-button").click(clickButtonGpx);
         $("#csv-button").click(clickButtonCSV);
-        countDown = 0;
+        retry = MAX_RETRY;
         console.log("addMenu ... Done ...");
     }
 
-    countDown--;
-    if (countDown > 0) {
-        setTimeout(addMenu, 1000);
+    retry++;
+    if (retry < MAX_RETRY) { // 60 * 500ms = 30s
+        setTimeout(addMenu, 500);
     }
 }
 
