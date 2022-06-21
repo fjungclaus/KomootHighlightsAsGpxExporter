@@ -7,7 +7,7 @@
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
 ## Todos
-* Have distance across the track of the highlights in the waypoint and CSV
+* ~~Have distance across the track of the highlights in the waypoint and CSV~~
 * ~~Allow exporting waypoints plus the GPX track itself in a single GPX file~~
 * Finish code for CSV export
 * About page
