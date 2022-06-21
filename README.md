@@ -15,6 +15,13 @@
 * Upload some screen shots to Github
 
 ## History
+* 0.9.6, 2022-06-21
+  * Fixed addMenu (there seems to have been some changes @komoot)
+  * Merge from experimental branch:
+    * Addded POI to debug output
+    * Warn about the still not available "save-as-gps"-functionality
+    * Sanitize xml-text to make Garmin basecamp happy
+    * Try to fetch distance of highlights along the track
 * 0.5, 2021-08-30, Added timestamps to track elements
 * 0.4, 2021-08-27, Also allow exporting the tours track itself
 * 0.1, 2021-08-25, First release via Github
