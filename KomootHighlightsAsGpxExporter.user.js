@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.4
+// @version      0.9.6
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -351,15 +351,13 @@ function addMenu() {
 
     if (stillLoading.length <= 3 || retry >= MAX_RETRY) {
         var add = document.createElement('div');
-        add.innerHTML = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b> (' + retry.toString() + '/' + MAX_RETRY.toString() + ')</h2>' ;
-        add.innerHTML += `
-  <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp;
-  <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" >Save as GPX (+track) ...</button>&nbsp;
-  <button class="ui-button ui-widget ui-corner-all" id="csv-button" >Save as CSV ...</button>&nbsp;
-  <button class="ui-button ui-widget ui-corner-all" id="dbg-button" >DEBUG ...</button>&nbsp;
-`;
+        add.innerHTML  = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b> (' + retry.toString() + '/' + MAX_RETRY.toString() + ')</h2>';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" >Save as GPX (+track) ...</button>&nbsp';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" >Save as CSV ...</button>&nbsp';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" >DEBUG ...</button>&nbsp';
         // "per copy JS path" ...
-        var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div")
+        var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div");
         if (!pos) {
             pos = document.querySelector("body"); // fallback position at first element of body ...
             add.style.cssText += "padding: 75px 0 0 0;";
