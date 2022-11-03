@@ -15,6 +15,8 @@
 * Upload some screen shots to Github
 
 ## History
+* 0.9.7, 2022-11-03
+  * Try to prevent using this script while editing a komoot tour (by means of using an @exclude parameter)
 * 0.9.6, 2022-06-21
   * Fixed addMenu (there seems to have been some changes @komoot)
   * Merge from experimental branch:

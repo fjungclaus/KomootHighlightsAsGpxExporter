@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.5
+// @version      0.9.7
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
 // @license      GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @match        https://*.komoot.de/tour/*
+// @exclude      https://*.komoot.de/tour/*/edit
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
 // @grant        GM_addStyle
@@ -333,7 +334,7 @@ function selectorContainsText(selector, text) {
 
 // "//a[contains(@href, '/highlight/')]",
 //         text = text + node.getAttribute('href') + "\n";
-// Subnode: . vor // sonst doch ganze document!
+// Subnode: . vor // sonst doch das ganze Dokument!
 function subEval(xpath, node)
 {
     // !!! trailing '.' else full document !!!
