@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.7
+// @version      0.9.8
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -346,11 +346,11 @@ function subEval(xpath, node)
 var retry = 0; /* Retries to insert our menu */
 function addMenu() {
     // check if there is a special SVG with title "loading"
-    var stillLoading = selectorContainsText("title", "loading"); // currently 6 at the beginning ... if done 3 ...
+    var stillLoading = selectorContainsText("title", "loading"); // length currently 6 at the beginning ... if done 4 ...
 
     console.log("addMenu:" + retry + ' stillLoading=' + stillLoading.length);
 
-    if (stillLoading.length <= 3 || retry >= MAX_RETRY) {
+    if (stillLoading.length <= 4 || retry >= MAX_RETRY) {
         var add = document.createElement('div');
         add.innerHTML  = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b> (' + retry.toString() + '/' + MAX_RETRY.toString() + ')</h2>';
         add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp';
@@ -374,10 +374,11 @@ function addMenu() {
         console.log("addMenu ... Done ...");
     }
 
-    retry++;
     if (retry < MAX_RETRY) { // 60 * 500ms = 30s
         setTimeout(addMenu, 500);
     }
+    retry++;
+
 }
 
 // Try to insert out menu into Komoot page
