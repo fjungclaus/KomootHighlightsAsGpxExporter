@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.8
+// @version      0.9.9
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -249,7 +249,7 @@ function createDebugText() {
                     }
                     dbgText+= '<td>' + highlight.location.lat + '</td>';
                     dbgText+= '<td>' + highlight.location.lng + '</td>';
-                    dbgText+= '<td>' + highlight.location.alt + '</td>';
+                    dbgText+= '<td>' + highlight.mid_point.alt + '</td>';
                     dbgText+= '<td>' + objDistances.find(element => (element.ref == highlight.id)).dst + '</td>';
 
                     dbgText+= '</tr>';
@@ -271,8 +271,8 @@ function createDebugText() {
                     dbgText+= '</td>';
                     dbgText+= '<td>' + poi.location.lat + '</td>';
                     dbgText+= '<td>' + poi.location.lng + '</td>';
-                    dbgText+= '<td>' + poi.location.alt + '</td>';
-                    dbgText+= '<td>' + "x" + '</td>';
+                    dbgText+= '<td>0.000</td>';
+                    dbgText+= '<td>x</td>';
                     dbgText+= '</tr>';
                 }
             }
@@ -306,7 +306,15 @@ function createGpxWptText() {
                     catch {
                         desc = "";
                     }
-                    gpxWptText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, highlight.location.alt, desc);
+                    var alt = '0.000';
+                    if (typeof highlight.location.alt !== 'undefined') {
+                        alt = highlight.location.alt;
+                    } else {
+                        if (typeof highlight.mid_point !== 'undefined') {
+                            alt = highlight.mid_point.alt;
+                        }
+                    }
+                    gpxWptText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, alt, desc);
                 }
             }
         }
@@ -352,7 +360,7 @@ function addMenu() {
 
     if (stillLoading.length <= 4 || retry >= MAX_RETRY) {
         var add = document.createElement('div');
-        add.innerHTML  = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b> (' + retry.toString() + '/' + MAX_RETRY.toString() + ')</h2>';
+        add.innerHTML = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b> (' + retry.toString() + '/' + MAX_RETRY.toString() + ')</h2>';
         add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp';
         add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" >Save as GPX (+track) ...</button>&nbsp';
         add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" >Save as CSV ...</button>&nbsp';
