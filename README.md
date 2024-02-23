@@ -15,6 +15,12 @@
 * Upload some screen shots to Github
 
 ## History
+* 0.9.10, 2024-02-23
+  * Added new URL to match against (https://*.komoot.com/de-de/tour/*)
+* 0.9.9, 2023-03-14
+  * Try to replace alt(itude) with highlight.mid_point.alt or '0.000'
+* 0.9.8, 2022-12-09
+  * Rework for address code changes @komoot regarding the "loading"-indicator
 * 0.9.7, 2022-11-03
   * Try to prevent using this script while editing a komoot tour (by means of using an @exclude parameter)
 * 0.9.6, 2022-06-21
