@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.10
+// @version      0.9.11
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -257,6 +257,7 @@ function createDebugText() {
                 } else if (tour._embedded.way_points._embedded.items[i].type == "poi") {
                     cnt++;
                     const poi = tour._embedded.way_points._embedded.items[i]._embedded.reference;
+                    if (poi._embedded.details) {
                     console.log("P:i=" + i + "cnt=" + cnt);
                     dbgText+= '<tr>';
                     dbgText+= '<td>' + cnt + '</td>';
@@ -275,6 +276,9 @@ function createDebugText() {
                     dbgText+= '<td>0.000</td>';
                     dbgText+= '<td>x</td>';
                     dbgText+= '</tr>';
+                }
+                } else {
+                    console.log("P:no details!!! i=" + i + "cnt=" + cnt);
                 }
             }
             dbgText+= '  </table>';
