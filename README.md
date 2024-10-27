@@ -40,3 +40,7 @@ Fixed until their next changes ...
 * 0.5, 2021-08-30, Added timestamps to track elements
 * 0.4, 2021-08-27, Also allow exporting the tours track itself
 * 0.1, 2021-08-25, First release via Github
+
+## Screenshots
+![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/bc8e36551a1e349eac6e18240b329c3711d335b7/2024-10-27%2016_06_51-2024-10-27%2015_21_39-Oktober24-Cuxi-233k-v1%20_%20Fahrradtour%20_%20Komoot.jpg)
+... to be continued ...
