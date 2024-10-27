@@ -15,6 +15,13 @@
 * Upload some screen shots to Github
 
 ## History
+* 0.9.12, 2024-10-27
+   * The latest changes by Komoot broke my script. They did some changes to naming and layout of
+some of their data structures from which I fetch "my" data of highlights and POI ... 
+The pain of people who scrape their information from a website without using an official API ;) 
+Fixed until their next changes ...
+* 0.9.11, 2024-09-13
+   * Small fix for table with debug output
 * 0.9.10, 2024-02-23
   * Added new URL to match against (https://*.komoot.com/de-de/tour/*)
 * 0.9.9, 2023-03-14

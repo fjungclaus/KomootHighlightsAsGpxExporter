@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.11
+// @version      0.9.12
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -9,11 +9,11 @@
 // @match        https://*.komoot.com/*/tour/*
 // @match        https://*.komoot.de/tour/*
 // @exclude      https://*.komoot.de/tour/*/edit
+// @exclude      https://*.komoot.com/tour/*/edit
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
 // @grant        GM_addStyle
 // @run-at       document-idle
-// // @run-at context-menu
 // ==/UserScript==
 
 
@@ -41,6 +41,7 @@ var showDebug = false;
 var $ = window.$; // just to prevent warnings about "$ not defined" in tampermonkey editor
 var dbgText = "", gpxWptText = "", gpxTrkText = "";
 var objDistances = [];
+var cntHighlights = 0;
 const kmtProps = unsafeWindow.kmtBoot.getProps();
 const tour = kmtProps.page._embedded.tour;
 const VERSION = GM_info.script.version;
@@ -65,6 +66,7 @@ td, th {
 }
 #menu-add .ui-button {
   padding: 2px !important;
+  margin: 0 0 5px 0 !important;
   font-size: 0.75em !important;
 }
 #menu-add button {
@@ -223,9 +225,9 @@ function createDebugText() {
             dbgText+= '  <table>';
             dbgText+= '<tr><th>#</th><th>Type</th><th>Name</th><th>Up</th><th>Down</th><th>Info</th><th>Lattitude</th><th>Longitude</th><th>Altitude</th><th>Dist</th><tr>';
             for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
-                if (tour._embedded.way_points._embedded.items[i].type == "highlight") {
+                if (tour._embedded.way_points._embedded.items[i].attributes.type == "highlight") {
                     cnt++;
-                    const highlight = tour._embedded.way_points._embedded.items[i]._embedded.reference;
+                    const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
                     console.log("H:i=" + i + "cnt=" + cnt);
                     dbgText+= '<tr>';
                     dbgText+= '<td>' + cnt + '</td>';
@@ -234,9 +236,10 @@ function createDebugText() {
                     try {
                         const tips = highlight._embedded.tips._embedded;
                         if (tips.items.length > 0) {
-                            dbgText+= '<td>' + tips.items[0].rating.up + '</td>';
-                            dbgText+= '<td>' + tips.items[0].rating.down + '</td>';
-                            dbgText+= '<td>' + tips.items[0].text + '</td>';
+                            const attrs = tips.items[0].attributes;
+                            dbgText+= '<td>' + attrs.rating.up + '</td>';
+                            dbgText+= '<td>' + attrs.rating.down + '</td>';
+                            dbgText+= '<td>' + attrs.text + '</td>';
                         } else {
                             dbgText+= '<td>%</td>';
                             dbgText+= '<td>%</td>';
@@ -254,9 +257,9 @@ function createDebugText() {
                     dbgText+= '<td>' + objDistances.find(element => (element.ref == highlight.id)).dst + '</td>';
 
                     dbgText+= '</tr>';
-                } else if (tour._embedded.way_points._embedded.items[i].type == "poi") {
+                } else if (tour._embedded.way_points._embedded.items[i].attributes.type == "poi") {
                     cnt++;
-                    const poi = tour._embedded.way_points._embedded.items[i]._embedded.reference;
+                    const poi = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
                     if (poi._embedded.details) {
                     console.log("P:i=" + i + "cnt=" + cnt);
                     dbgText+= '<tr>';
@@ -296,16 +299,16 @@ function createGpxWptText() {
         if (tour._embedded.way_points._embedded.items.length > 0) {
             fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
             for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
-                if (tour._embedded.way_points._embedded.items[i].type == "highlight" ||
-                    tour._embedded.way_points._embedded.items[i].type == "poi") {
+                if (tour._embedded.way_points._embedded.items[i].attributes.type == "highlight" ||
+                    tour._embedded.way_points._embedded.items[i].attributes.type == "poi") {
                     cnt++;
-                    const highlight = tour._embedded.way_points._embedded.items[i]._embedded.reference;
-                    console.log("i=" + i);
+                    const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
                     var desc = "";
                     try {
                         const tips = highlight._embedded.tips._embedded;
                         if (tips.items.length > 0) {
-                            desc = sanitizeText(tips.items[0].text);
+                            const attrs = tips.items[0].attributes;
+                            desc = sanitizeText(attrs.text);
                         }
                     }
                     catch {
@@ -319,6 +322,7 @@ function createGpxWptText() {
                             alt = highlight.mid_point.alt;
                         }
                     }
+                    console.log("createGpxWptText: i=" + i + "," + highlight.name + "," + highlight.location.lat + "," + highlight.location.lng);
                     gpxWptText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, alt, desc);
                 }
             }
@@ -365,17 +369,22 @@ function addMenu() {
 
     if (stillLoading.length <= 4 || retry >= MAX_RETRY) {
         var add = document.createElement('div');
-        add.innerHTML = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b> (' + retry.toString() + '/' + MAX_RETRY.toString() + ')</h2>';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" >Save as GPX ...</button>&nbsp';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" >Save as GPX (+track) ...</button>&nbsp';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" >Save as CSV ...</button>&nbsp';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" >DEBUG ...</button>&nbsp';
+        add.innerHTML = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b></h2>';
+        add.innerHTML += '<p><small>Highlights=' + cntHighlights.toString() + ', POI=?, addMenu=' + retry.toString() + ' (re-)tries</small></p>';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POI without the GPX track itself into a GPX file" >Save as GPX ...</button>&nbsp';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POI plus the GPX-track in a single GPX file">Save as GPX (+track) ...</button>&nbsp';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" title="Save highlights and POI as CSV. Not yet implemented! Please use copy&paste to e.g. Libreoffice Calc from DEBUG-table">Save as CSV ...</button>&nbsp';
+        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some debug information about all highlights and POI found ...">DEBUG ...</button>&nbsp';
         // "per copy JS path" ...
-        var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div");
-        if (!pos) {
+        // old:
+        //   var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div");
+        // new:
+        var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5");
+        if (pos) {
+           add.style.cssText += "padding: 0 0 0 25px;";
+        } else {
             pos = document.querySelector("body"); // fallback position at first element of body ...
             add.style.cssText += "padding: 75px 0 0 0;";
-
         }
         add.setAttribute('id', 'menu-add');
         pos.prepend(add); // todo ...
@@ -414,12 +423,14 @@ setTimeout(addMenu, 1000);
     // Get all divs with class='tw-mb-6'
     courseObjs = subEval("//div[@class='tw-mb-6']", document.body);
 
+    cntHighlights = 0;
     for (var i = 0; i < courseObjs.snapshotLength; i++) {
         var subObjs, objs, url, name, type, dist;
 
         // Is course object a highlight?
         subObjs = subEval(".//a[contains(@href, '/highlight/')]", courseObjs.snapshotItem(i));
         if (subObjs.snapshotLength > 0) {
+            cntHighlights++;
             // Yes, it is a highlight. Get link and name of highlight
             url = subObjs.snapshotItem(0).getAttribute('href');
             name = subObjs.snapshotItem(0).outerText;
@@ -428,14 +439,14 @@ setTimeout(addMenu, 1000);
             if (objs.snapshotLength > 0) {
                 type = objs.snapshotItem(0).innerText;
             } else {
-                type = ""
+                type = "NIL";
             }
             // Get distance of highlight
-            objs = subEval(".//div[@class='tw-mt-1 tw-text-secondary']", courseObjs.snapshotItem(i));
+            objs = subEval(".//div[@class='tw-mt-1 tw-text-whisper']", courseObjs.snapshotItem(i));
             if (objs.snapshotLength > 0) {
                 dist = objs.snapshotItem(0).innerText;
             } else {
-                dist = ""
+                dist = "UNKNOWN";
             }
             console.log(url + ":" + name + ":" + type + ":" + dist);
             try {
