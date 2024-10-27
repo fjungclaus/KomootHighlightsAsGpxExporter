@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.13
+// @version      0.9.14
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -44,7 +44,10 @@ var objDistances = [];
 var cntHighlights = 0;
 const kmtProps = unsafeWindow.kmtBoot.getProps();
 const tour = kmtProps.page._embedded.tour;
-const VERSION = GM_info.script.version;
+const S_VERSION = GM_info.script.version;
+const S_NAME = GM_info.script.name;
+const S_HANDLER = GM_info.scriptHandler;
+const S_HANDLER_VERSION = GM_info.version;
 const MAX_RETRY=60; // retries to install our menu (MAX_RETRY * 500ms)
 
 
@@ -96,7 +99,7 @@ function getGpxHeader(name) {
   ret+= document.URL.match(/https:\/\/.*komoot.*\/[0-9]+/);
     ret += `">
         <text>Tampermonkey, https://dl4xj.de, KomootHighlightsAsGpxExporter, V`;
-    ret+= VERSION;
+    ret+= S_VERSION;
     ret+=`</text>
         <type>text/html</type>
       </link>
@@ -390,7 +393,7 @@ function addMenu() {
 
     if (stillLoading.length <= 4 || retry >= MAX_RETRY) {
         var add = document.createElement('div');
-        add.innerHTML = '<h2><b>Tampermonkey: Save highlights+POI as GPX</b></h2>';
+        add.innerHTML = '<h2>' + S_HANDLER + ' (V' + S_HANDLER_VERSION + '): <b>' + S_NAME + '</b> (V' + S_VERSION +')</h2>';
         add.innerHTML += '<p><small>Highlights=' + cntHighlights.toString() + ', POI=?, addMenu=' + retry.toString() + ' (re-)tries</small></p>';
         add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POI without the GPX track itself into a GPX file" >Save as GPX ...</button>&nbsp';
         add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POI plus the GPX-track in a single GPX file">Save as GPX (+track) ...</button>&nbsp';

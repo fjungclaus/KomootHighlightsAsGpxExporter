@@ -23,6 +23,8 @@ reloading the page (e.g. by means of 'F5') might help.
 * Upload some screen shots to Github
 
 ## History
+* 0.9.14, 2024-10-27
+   * Minor change only: Display Greasemonkey and script version numbers
 * 0.9.13, 2024-10-27
    * Quick&dirty fix for highlights with undefined name or mid_point
 * 0.9.12, 2024-10-27
