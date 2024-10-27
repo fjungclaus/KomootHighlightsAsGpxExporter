@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.12
+// @version      0.9.13
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -232,7 +232,7 @@ function createDebugText() {
                     dbgText+= '<tr>';
                     dbgText+= '<td>' + cnt + '</td>';
                     dbgText+= '<td>' + highlight.type.replace('highlight_','') + '</td>';
-                    dbgText+= '<td>' + highlight.name + '</td>';
+                    dbgText+= '<td>' + highlight.name + ' </td>';
                     try {
                         const tips = highlight._embedded.tips._embedded;
                         if (tips.items.length > 0) {
@@ -253,9 +253,23 @@ function createDebugText() {
                     }
                     dbgText+= '<td>' + highlight.location.lat + '</td>';
                     dbgText+= '<td>' + highlight.location.lng + '</td>';
-                    dbgText+= '<td>' + highlight.mid_point.alt + '</td>';
-                    dbgText+= '<td>' + objDistances.find(element => (element.ref == highlight.id)).dst + '</td>';
-
+                    var alt = '0.000';
+                    if (typeof highlight.location.alt !== 'undefined') {
+                        alt = highlight.location.alt;
+                    } else {
+                        if (typeof highlight.mid_point !== 'undefined') {
+                            alt = highlight.mid_point.alt;
+                        }
+                    }
+                    dbgText+= '<td>' + alt + '</td>';
+                    var od = objDistances.find(element => (element.ref == highlight.id));
+                    var dst;
+                    if (typeof od !== 'undefined') {
+                        dst = od.dst;
+                    } else {
+                        dst = "no dst found id=" + highlight.id;
+                    }
+                    dbgText+= '<td>' + dst + '</td>';
                     dbgText+= '</tr>';
                 } else if (tour._embedded.way_points._embedded.items[i].attributes.type == "poi") {
                     cnt++;
@@ -304,6 +318,13 @@ function createGpxWptText() {
                     cnt++;
                     const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
                     var desc = "";
+
+                    if (typeof highlight.name == 'undefined') {
+                        /* BTW: Why are there highlights without a name ??? */
+                        console.log("createGpxWptText: No name :( Continue for i=" + i);
+                        continue;
+                    }
+
                     try {
                         const tips = highlight._embedded.tips._embedded;
                         if (tips.items.length > 0) {

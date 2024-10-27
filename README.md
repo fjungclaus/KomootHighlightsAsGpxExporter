@@ -15,6 +15,8 @@
 * Upload some screen shots to Github
 
 ## History
+* 0.9.13, 2024-10-27
+   * Quick&dirty fix for highlights with undefined name or mid_point
 * 0.9.12, 2024-10-27
    * The latest changes by Komoot broke my script. They did some changes to naming and layout of
 some of their data structures from which I fetch "my" data of highlights and POI ... 
