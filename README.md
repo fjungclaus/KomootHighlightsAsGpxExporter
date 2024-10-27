@@ -6,6 +6,10 @@
 * Might also run with Greasmonkey in Firefox, but I didn't find the time to test that until now ...
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
+## Successfully tested with ...
+- 2024-10-27: Firefox 131.0.3 + Tampermonkey 5.3.1
+- 2024-10-27: Chrome 130.0.6723.70 + Tampermonkey 5.3.1
+
 ## Hints
 - If the menu buttons of this Tampermonkey scripts don't show up,
 reloading the page (e.g. by means of 'F5') might help.
