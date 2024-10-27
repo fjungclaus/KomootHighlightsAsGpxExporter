@@ -6,6 +6,10 @@
 * Might also run with Greasmonkey in Firefox, but I didn't find the time to test that until now ...
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
+## Hints
+- If the menu buttons of this Tampermonkey scripts don't show up,
+reloading the page (e.g. by means of 'F5') might help.
+
 ## Todos
 * ~~Have distance across the track of the highlights in the waypoint and CSV~~
 * ~~Allow exporting waypoints plus the GPX track itself in a single GPX file~~
