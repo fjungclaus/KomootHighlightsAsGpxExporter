@@ -23,7 +23,7 @@ reloading the page (e.g. by means of 'F5') might help.
 * Upload some screen shots to Github
 
 ## History
-* 0.9.15, 2024-10-29
+* 0.9.16, 2024-10-29
    * Tried to make use of @updateURL and @downloadURL
 * 0.9.14, 2024-10-27
    * Minor change only: Display Greasemonkey and script version numbers
