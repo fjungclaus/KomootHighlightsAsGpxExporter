@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.16
+// @version      0.9.17
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -232,50 +232,55 @@ function createDebugText() {
             for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
                 if (tour._embedded.way_points._embedded.items[i].attributes.type == "highlight") {
                     cnt++;
-                    const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
                     console.log("H:i=" + i + "cnt=" + cnt);
-                    dbgText+= '<tr>';
-                    dbgText+= '<td>' + cnt + '</td>';
-                    dbgText+= '<td>' + highlight.type.replace('highlight_','') + '</td>';
-                    dbgText+= '<td>' + highlight.name + ' </td>';
                     try {
-                        const tips = highlight._embedded.tips._embedded;
-                        if (tips.items.length > 0) {
-                            const attrs = tips.items[0].attributes;
-                            dbgText+= '<td>' + attrs.rating.up + '</td>';
-                            dbgText+= '<td>' + attrs.rating.down + '</td>';
-                            dbgText+= '<td>' + attrs.text + '</td>';
-                        } else {
-                            dbgText+= '<td>%</td>';
-                            dbgText+= '<td>%</td>';
-                            dbgText+= '<td>%</td>';
+                        const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
+                        dbgText+= '<tr>';
+                        dbgText+= '<td>' + cnt + '</td>';
+                        dbgText+= '<td>' + highlight.type.replace('highlight_','') + '</td>';
+                        dbgText+= '<td>' + highlight.name + ' </td>';
+                        try {
+                            const tips = highlight._embedded.tips._embedded;
+                            if (tips.items.length > 0) {
+                                const attrs = tips.items[0].attributes;
+                                dbgText+= '<td>' + attrs.rating.up + '</td>';
+                                dbgText+= '<td>' + attrs.rating.down + '</td>';
+                                dbgText+= '<td>' + attrs.text + '</td>';
+                            } else {
+                                dbgText+= '<td>%</td>';
+                                dbgText+= '<td>%</td>';
+                                dbgText+= '<td>%</td>';
+                            }
                         }
+                        catch {
+                            dbgText+= '<td>X</td>';
+                            dbgText+= '<td>X</td>';
+                            dbgText+= '<td>X</td>';
+                        }
+                        dbgText+= '<td>' + highlight.location.lat + '</td>';
+                        dbgText+= '<td>' + highlight.location.lng + '</td>';
+                        var alt = '0.000';
+                        if (typeof highlight.location.alt !== 'undefined') {
+                            alt = highlight.location.alt;
+                        } else {
+                            if (typeof highlight.mid_point !== 'undefined') {
+                                alt = highlight.mid_point.alt;
+                            }
+                        }
+                        dbgText+= '<td>' + alt + '</td>';
+                        var od = objDistances.find(element => (element.ref == highlight.id));
+                        var dst;
+                        if (typeof od !== 'undefined') {
+                            dst = od.dst;
+                        } else {
+                            dst = "no dst found id=" + highlight.id;
+                        }
+                        dbgText+= '<td>' + dst + '</td>';
+                        dbgText+= '</tr>';
                     }
                     catch {
-                        dbgText+= '<td>X</td>';
-                        dbgText+= '<td>X</td>';
-                        dbgText+= '<td>X</td>';
+                        dbgText+= '<tr><td>' + cnt + '<td colspan="9">Sorry, [...]._syncedAttributes._embedded.reference is undefined :(</td></tr>';
                     }
-                    dbgText+= '<td>' + highlight.location.lat + '</td>';
-                    dbgText+= '<td>' + highlight.location.lng + '</td>';
-                    var alt = '0.000';
-                    if (typeof highlight.location.alt !== 'undefined') {
-                        alt = highlight.location.alt;
-                    } else {
-                        if (typeof highlight.mid_point !== 'undefined') {
-                            alt = highlight.mid_point.alt;
-                        }
-                    }
-                    dbgText+= '<td>' + alt + '</td>';
-                    var od = objDistances.find(element => (element.ref == highlight.id));
-                    var dst;
-                    if (typeof od !== 'undefined') {
-                        dst = od.dst;
-                    } else {
-                        dst = "no dst found id=" + highlight.id;
-                    }
-                    dbgText+= '<td>' + dst + '</td>';
-                    dbgText+= '</tr>';
                 } else if (tour._embedded.way_points._embedded.items[i].attributes.type == "poi") {
                     cnt++;
                     const poi = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
@@ -321,35 +326,40 @@ function createGpxWptText() {
                 if (tour._embedded.way_points._embedded.items[i].attributes.type == "highlight" ||
                     tour._embedded.way_points._embedded.items[i].attributes.type == "poi") {
                     cnt++;
-                    const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
-                    var desc = "";
-
-                    if (typeof highlight.name == 'undefined') {
-                        /* BTW: Why are there highlights without a name ??? */
-                        console.log("createGpxWptText: No name :( Continue for i=" + i);
-                        continue;
-                    }
-
                     try {
-                        const tips = highlight._embedded.tips._embedded;
-                        if (tips.items.length > 0) {
-                            const attrs = tips.items[0].attributes;
-                            desc = sanitizeText(attrs.text);
+                        const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
+                        var desc = "";
+
+                        if (typeof highlight.name == 'undefined') {
+                            /* BTW: Why are there highlights without a name ??? */
+                            console.log("createGpxWptText: No name :( Continue for i=" + i);
+                            continue;
                         }
+
+                        try {
+                            const tips = highlight._embedded.tips._embedded;
+                            if (tips.items.length > 0) {
+                                const attrs = tips.items[0].attributes;
+                                desc = sanitizeText(attrs.text);
+                            }
+                        }
+                        catch {
+                            desc = "";
+                        }
+                        var alt = '0.000';
+                        if (typeof highlight.location.alt !== 'undefined') {
+                            alt = highlight.location.alt;
+                        } else {
+                            if (typeof highlight.mid_point !== 'undefined') {
+                                alt = highlight.mid_point.alt;
+                            }
+                        }
+                        console.log("createGpxWptText: i=" + i + "," + highlight.name + "," + highlight.location.lat + "," + highlight.location.lng);
+                        gpxWptText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, alt, desc);
                     }
                     catch {
-                        desc = "";
+                        alert("Info:\nSkipping highlight #" + i + " due to undefined _syncedAttributes._embedded.reference :(");
                     }
-                    var alt = '0.000';
-                    if (typeof highlight.location.alt !== 'undefined') {
-                        alt = highlight.location.alt;
-                    } else {
-                        if (typeof highlight.mid_point !== 'undefined') {
-                            alt = highlight.mid_point.alt;
-                        }
-                    }
-                    console.log("createGpxWptText: i=" + i + "," + highlight.name + "," + highlight.location.lat + "," + highlight.location.lng);
-                    gpxWptText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, alt, desc);
                 }
             }
         }

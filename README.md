@@ -23,6 +23,12 @@ reloading the page (e.g. by means of 'F5') might help.
 * Upload some screen shots to Github
 
 ## History
+* 0.9.17, 2025-05-15
+   * [As reported by malnvenshorn](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/2#issuecomment-2873009891) highlight #29 within https://www.komoot.com/de-de/tour/992841160 does not have a
+     tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded property.
+     This caused an exception which terminates the script.
+     Intermediate quick fix by adding a try/catch-block which should skip such a highlight (user will see an alert box then).
+     A better solution will (hopefully) follow ...
 * 0.9.16, 2024-10-29
    * Tried to make use of @updateURL and @downloadURL
 * 0.9.14, 2024-10-27
