@@ -19,7 +19,7 @@
 
 ## Hints
 - If the menu buttons of this Tampermonkey scripts don't show up, reloading the page (e.g. by means of 'F5') might help
-   - Since 0.9.39 there wiil be a yellowish bar on the Komoot page during insertion of the script's menu
+- Since 0.9.39 there will be a yellowish bar on the Komoot page during insertion of the script's menu
 ![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2016_46_19-yellowish-line-during-menu-insertion.jpg)
 - Use the button "Save as GPX (+ track)" to save highlights and POIs plus the GPX-track itself in a single GPX file
 ![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2017_12_29-button-gpx-plus-track.jpg)
