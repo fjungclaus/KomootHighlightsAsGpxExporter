@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.17
+// @version      0.9.40
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -15,6 +15,9 @@
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
 // @grant        GM_addStyle
+// @grant        GM.xmlHttpRequest
+// @connect      api.komoot.de
+// @connect      api.komoot.com
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -37,48 +40,85 @@
 'use strict';
 
 
-
-var fileName = "gpx.gpx";
 var showDebug = false;
+var retry = 0; /* Retries to insert our menu */
 var $ = window.$; // just to prevent warnings about "$ not defined" in tampermonkey editor
-var dbgText = "", gpxWptText = "", gpxTrkText = "";
-var objDistances = [];
-var cntHighlights = 0;
-const kmtProps = unsafeWindow.kmtBoot.getProps();
-const tour = kmtProps.page._embedded.tour;
+var dbgText = "", gpxWptText = "", gpxTrkText = "", csvText = "";
+var fileName = "gpx.gpx";
+var gpxx = { waypoints: [], coordDists: [], meta: { nrHighlights: {is: 0, should: 0}, nrPOIs: {is: 0 , should: 0}, name: "-name-", id: "-id-" }};
+var bgData = {nrProblems: 0, nrFetched: 0, waypoints : []}; // background data (waypoints) fetched in background on our own ...
+const kmtBoot = unsafeWindow.kmtBoot;
+var kmtProps = null;
+var tour = null;
 const S_VERSION = GM_info.script.version;
 const S_NAME = GM_info.script.name;
 const S_HANDLER = GM_info.scriptHandler;
 const S_HANDLER_VERSION = GM_info.version;
-const MAX_RETRY=60; // retries to install our menu (MAX_RETRY * 500ms)
+const MAX_RETRY= 60; // max. retries to install our menu (MAX_RETRY * 250ms)
+const tStart = Date.now();
+var tStartBGFetch = tStart;
 
-
-
-/* CSS */
+// CSS
 GM_addStyle(`
 table {
   border-collapse: collapse;
-  width: 1200px;
+  width: 1520px;
 }
-td, th {
+
+th {
+  position: sticky;
+  top: 0;
+  background: #d7edf4;
+  z-index: 2;
+  border: 1px dashed #000;
+  padding: 0.5rem;
+  text-align: center;
+}
+
+tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+tr:nth-child(even) {
+  background-color: #e8e8e8;
+}
+
+td {
   border: 1px dashed #000;
   padding: 0.5rem;
   text-align: left;
 }
-#menu-add {
-  padding: 0 0 5px 0;
-  background: #eee;
-}
-#menu-add .ui-button {
-  padding: 2px !important;
-  margin: 0 0 5px 0 !important;
-  font-size: 0.75em !important;
-}
-#menu-add button {
-  color: #f00;
-}
-`);
 
+div #menu-add {
+  padding: 10px !important;
+  background: #eeeeee;
+  border-radius: 16px;
+  margin-bottom: 15px;
+  border: 3px solid #6dac27;
+}
+
+#menu-add .ui-button {
+  padding: 6px !important;
+  margin: 10px 0 2px 0 !important;
+  font-size: 0.75em !important;
+  font-weight: bold;
+  border-radius: 8px;
+  transition: background-color 0.5s;
+}
+
+#menu-add button:hover {
+  background-color: #b3b3b3;
+}
+
+#menu-add button {
+  color: #144696;
+}
+
+.ui-front {
+    z-index: 255 !important;
+}
+
+`);
 
 
 // Add jquery CSS
@@ -88,17 +128,53 @@ $("head").append (
   + 'rel="stylesheet" type="text/css">'
 );
 
+
+function d2r(degrees) {
+    return degrees * Math.PI / 180.0;
+}
+
+
+// haversine algo + pythagoras to also take altitude into consideration ...
+function haversineDist3D(p1, p2) {
+    const R = 6371000; // in meters to match alt, which is also in meters
+    const lat1 = d2r(p1.lat);
+    const lon1 = d2r(p1.lng);
+    const lat2 = d2r(p2.lat);
+    const lon2 = d2r(p2.lng);
+    const dLat = lat2 - lat1;
+    const dLon = lon2 - lon1;
+
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dst = R * c;
+    const dAlt = (p2.alt) - (p1.alt); // assume alt in meters ...
+
+    return Math.sqrt(dst ** 2 + dAlt ** 2) / 1000.0; // return in km
+}
+
+
+function getDistsAlongTrack(coords, coordDistances) {
+    let total = 0;
+
+    coordDistances[0] = 0;
+    for (let i = 1; i < coords.length; i++) {
+        total += haversineDist3D(coords[i - 1], coords[i]);
+        coordDistances.push(total.toFixed(1));
+    }
+}
+
+
 function getGpxHeader(name) {
-  var ret;
-  ret = `<?xml version='1.0' encoding='UTF-8'?>
+    var ret;
+    ret = `<?xml version='1.0' encoding='UTF-8'?>
 <gpx version="1.1" creator="https://www.komoot.de" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
     <name>`;
-  ret+= name;
-  ret+= `</name>
+    ret+= name;
+    ret+= `</name>
     <author>
       <link href="`;
-  ret+= document.URL.match(/https:\/\/.*komoot.*\/[0-9]+/);
+    ret+= document.URL.match(/https:\/\/.*komoot.*\/[0-9]+/);
     ret += `">
         <text>Tampermonkey, https://dl4xj.de, KomootHighlightsAsGpxExporter, V`;
     ret+= S_VERSION;
@@ -108,13 +184,15 @@ function getGpxHeader(name) {
     </author>
  </metadata>
 `;
- return ret;
+    return ret;
 }
+
 
 function getGpxFooter() {
     var ret = `</gpx>`;
     return ret;
 }
+
 
 function getGpxWaypoint(name, lat, lng, alt, desc) {
     var ret;
@@ -127,6 +205,7 @@ function getGpxWaypoint(name, lat, lng, alt, desc) {
     return ret;
 }
 
+
 function getGpxTrkpointHeader(name) {
     var ret;
     ret = ' <trk>\n';
@@ -135,12 +214,14 @@ function getGpxTrkpointHeader(name) {
     return ret;
 }
 
+
 function getGpxTrkpointFooter() {
     var ret;
     ret = '  </trkseg>\n';
     ret+= ' </trk>\n';
     return ret;
 }
+
 
 function getGpxTrkpoint(coord) {
     var ret;
@@ -152,6 +233,7 @@ function getGpxTrkpoint(coord) {
     ret+= '   </trkpt>\n';
     return ret;
 }
+
 
 // Save given data to given filename
 var saveData = (function () {
@@ -168,27 +250,34 @@ var saveData = (function () {
     };
 }());
 
+
 function clickButtonCSV(ev) {
-    alert("Not yet implemented ...");
+    collectWaypoints();
+    createCSVText();
+    saveData(csvText, fileName + ".csv"); // xxx.gpx.csv by intention!
 }
 
+
 function clickButtonDbg(ev) {
+    collectWaypoints();
     createDebugText();
     $("body").append(dbgText);
-    $("#dialog").dialog({ autoOpen: false, maxHeight: 640, width: 1260, maxWidth: 1260, close: function() { showDebug = false; } });
+    $("#dialog").dialog({ autoOpen: false, maxHeight: 800, width: 1580, maxWidth: 1600, close: function() { showDebug = false; } });
     showDebug = !showDebug;
     $("#dialog").dialog(showDebug ? 'open' : 'close');
 }
 
+
 function clickButtonGpx(ev) {
     var txt;
+    collectWaypoints();
     createGpxWptText();
-    txt = getGpxHeader("Tour=" + tour.id + ", " + sanitizeText(tour.name));
+    txt = getGpxHeader("Tour=" + gpxx.meta.id + ", " + sanitizeText(gpxx.meta.name));
     txt+= gpxWptText;
 
     if (ev.currentTarget.id == "gpx-full-button") {
         createGpxTrkText();
-        txt+= getGpxTrkpointHeader(sanitizeText(tour.name));
+        txt+= getGpxTrkpointHeader(sanitizeText(gpxx.meta.name));
         txt+= gpxTrkText;
         txt+= getGpxTrkpointFooter();
     }
@@ -198,11 +287,8 @@ function clickButtonGpx(ev) {
 
 }
 
-function sanitizeFileName(name) {
-    return name.replace(/ /g, "_").replace(/[^\p{L}\p{N}^$\n]/gu, '');
-}
 
-function sanitizeText(txt) {
+function sanitizeFileName(name) {
     /*
       Removes all symbols except:
        \p{L} - all letters from any language
@@ -213,6 +299,12 @@ function sanitizeText(txt) {
 
        .replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n]/gu, '').replace(/&/g, '');
     */
+    return name.replace(/ /g, "_").replace(/[^\p{L}\p{N}^$\n]/gu, '');
+}
+
+
+// make it safe for xml / html
+function sanitizeText(txt) {
     return txt.replace(/&/g, '&amp;')
               .replace(/</g, '&lt;')
               .replace(/>/g, '&gt;')
@@ -220,151 +312,299 @@ function sanitizeText(txt) {
               .replace(/'/g, '&apos;');
 }
 
-// jQuery Dialog with some debug data
+
+function htmlColorize(txt, color) {
+    return '<font color="' + color + '">' + txt + '</font>';
+}
+
+
+// A jQuery dialog with some debug data
 function createDebugText() {
     if (dbgText == "") {
         dbgText = '<div id="dialog" title="Highlights to GPX">';
-        if (tour._embedded.way_points._embedded.items.length > 0) {
-            fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
-            dbgText+= '  <b>Tour #' + tour.id + ', ' + tour.name + '</b>';
-            dbgText+= '  <table>';
-            dbgText+= '<tr><th>#</th><th>Type</th><th>Name</th><th>Up</th><th>Down</th><th>Info</th><th>Lattitude</th><th>Longitude</th><th>Altitude</th><th>Dist</th><tr>';
-            for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
-                if (tour._embedded.way_points._embedded.items[i].attributes.type == "highlight") {
-                    cnt++;
-                    console.log("H:i=" + i + "cnt=" + cnt);
-                    try {
-                        const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
-                        dbgText+= '<tr>';
-                        dbgText+= '<td>' + cnt + '</td>';
-                        dbgText+= '<td>' + highlight.type.replace('highlight_','') + '</td>';
-                        dbgText+= '<td>' + highlight.name + ' </td>';
-                        try {
-                            const tips = highlight._embedded.tips._embedded;
-                            if (tips.items.length > 0) {
-                                const attrs = tips.items[0].attributes;
-                                dbgText+= '<td>' + attrs.rating.up + '</td>';
-                                dbgText+= '<td>' + attrs.rating.down + '</td>';
-                                dbgText+= '<td>' + attrs.text + '</td>';
-                            } else {
-                                dbgText+= '<td>%</td>';
-                                dbgText+= '<td>%</td>';
-                                dbgText+= '<td>%</td>';
-                            }
-                        }
-                        catch {
-                            dbgText+= '<td>X</td>';
-                            dbgText+= '<td>X</td>';
-                            dbgText+= '<td>X</td>';
-                        }
-                        dbgText+= '<td>' + highlight.location.lat + '</td>';
-                        dbgText+= '<td>' + highlight.location.lng + '</td>';
-                        var alt = '0.000';
-                        if (typeof highlight.location.alt !== 'undefined') {
-                            alt = highlight.location.alt;
-                        } else {
-                            if (typeof highlight.mid_point !== 'undefined') {
-                                alt = highlight.mid_point.alt;
-                            }
-                        }
-                        dbgText+= '<td>' + alt + '</td>';
-                        var od = objDistances.find(element => (element.ref == highlight.id));
-                        var dst;
-                        if (typeof od !== 'undefined') {
-                            dst = od.dst;
-                        } else {
-                            dst = "no dst found id=" + highlight.id;
-                        }
-                        dbgText+= '<td>' + dst + '</td>';
-                        dbgText+= '</tr>';
-                    }
-                    catch {
-                        dbgText+= '<tr><td>' + cnt + '<td colspan="9">Sorry, [...]._syncedAttributes._embedded.reference is undefined :(</td></tr>';
-                    }
-                } else if (tour._embedded.way_points._embedded.items[i].attributes.type == "poi") {
-                    cnt++;
-                    const poi = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
-                    if (poi._embedded.details) {
-                    console.log("P:i=" + i + "cnt=" + cnt);
-                    dbgText+= '<tr>';
-                    dbgText+= '<td>' + cnt + '</td>';
-                    dbgText+= '<td>POI</td>';
-                    dbgText+= '<td>' + poi.name + '</td>';
-                    dbgText+= '<td>-</td>';
-                    dbgText+= '<td>-</td>';
-                    dbgText+= '<td>';
-                    for(var j = 0; j < poi._embedded.details.items.length; j++) {
-                        dbgText += '<b>' + poi._embedded.details.items[j].key + ":</b> " + sanitizeText(poi._embedded.details.items[j].formatted);
-                        dbgText += '<br/>';
-                    }
-                    dbgText+= '</td>';
-                    dbgText+= '<td>' + poi.location.lat + '</td>';
-                    dbgText+= '<td>' + poi.location.lng + '</td>';
-                    dbgText+= '<td>0.000</td>';
-                    dbgText+= '<td>x</td>';
-                    dbgText+= '</tr>';
-                }
-                } else {
-                    console.log("P:no details!!! i=" + i + "cnt=" + cnt);
-                }
+        dbgText+= '<b>';
+        dbgText+= 'Tour Id=' + gpxx.meta.id + ', Name=' + sanitizeText(gpxx.meta.name);
+        dbgText+= ', Highlights=<font color="' + ((gpxx.meta.nrHighlights.is == gpxx.meta.nrHighlights.should) ? 'green' : 'red') + '">' + gpxx.meta.nrHighlights.is + '/' + gpxx.meta.nrHighlights.should + '</font>';
+        dbgText+= ', POIs=<font color="' + ((gpxx.meta.nrPOIs.is == gpxx.meta.nrPOIs.should) ? 'green' : 'red') + '">' + gpxx.meta.nrPOIs.is + '/' + gpxx.meta.nrPOIs.should + '</font>';
+        dbgText+= ', GPX track points=' + tour._embedded.coordinates.items.length;
+        dbgText+= '</b>';
+        if (gpxx.waypoints.length > 0) {
+            dbgText+= '<table>';
+            dbgText+= '<tr><th>#</th><th title="*** Flags\nB:background fetch\nD:deprecated data?">&#x1F6A9;</th><th>Type</th><th>Name</th><th>Info</th><th title="Latitude [°]">Lat</th><th title="longitude [°]">Lon</th><th title="Altitude [m]">Alt</th><th title="Distance along track [km]">Dist</th><tr>';
+            for (var i = 0; i < gpxx.waypoints.length; i++) {
+                const wp = gpxx.waypoints[i];
+                const color = wp.flags.includes('D') ? "red" : wp.flags.includes('B') ? "orange" : "black";
+
+                dbgText+= '<tr>';
+                dbgText+= '<td>' + (i + 1) + '</td>';
+                dbgText+= '<td>' + wp.flags + '</td>';
+                dbgText+= '<td>' + wp.type + '</td>';
+                dbgText+= '<td>' + htmlColorize(sanitizeText(wp.name), color) + '</td>';
+                dbgText+= '<td>' + htmlColorize(sanitizeText(wp.info).replaceAll("\n" , "<br>"), color) + '</td>';
+                dbgText+= '<td>' + wp.lat + '</td>';
+                dbgText+= '<td>' + wp.lng + '</td>';
+                dbgText+= '<td>' + wp.alt + '</td>';
+                dbgText+= '<td>' + wp.dist + '</td>';
+                dbgText+= '</tr>';
             }
-            dbgText+= '  </table>';
+            dbgText+= '</table>';
         } else {
             dbgText+= '<p>Hmmm, a tour without any point or highlight!?</p>';
         }
         dbgText+= '</div>';
-
     }
 }
 
-// Get all highlights of tour as GPX waypoints
-function createGpxWptText() {
-    if (gpxWptText == "") {
+
+function addCSVElement(ele, first, last) {
+    let csva = "";
+
+    if (!first) {
+        csva+= ',';
+    }
+    csva+= '"';
+    csva+= ele.toString().replaceAll('"', '""');
+    csva+= '"';
+    if (last) {
+        csva+= '\n';
+    }
+
+    return csva;
+}
+
+
+function createCSVText() {
+    if (csvText == "") {
+        csvText+= addCSVElement("Tour Id", 1, 0);
+        csvText+= addCSVElement(gpxx.meta.id, 0, 0);
+        csvText+= addCSVElement("Name", 0, 0);
+        csvText+= addCSVElement(gpxx.meta.name, 0, 1);
+
+        if (gpxx.waypoints.length > 0) {
+            csvText+= '"#","Flags","Type","Name","Latitude","Longitude","Altitude","Distance","Info"\n';
+            for (var i = 0; i < gpxx.waypoints.length; i++) {
+                const wp = gpxx.waypoints[i];
+                csvText+= addCSVElement(i+1, 1, 0);
+                csvText+= addCSVElement(wp.flags, 0, 0);
+                csvText+= addCSVElement(wp.type, 0, 0);
+                csvText+= addCSVElement(wp.name, 0, 0);
+                csvText+= addCSVElement(wp.lat, 0, 0);
+                csvText+= addCSVElement(wp.lng, 0, 0);
+                csvText+= addCSVElement(wp.alt, 0, 0);
+                csvText+= addCSVElement(wp.dist, 0, 0);
+                csvText+= addCSVElement(wp.info, 0, 1);
+
+            }
+        }
+    }
+}
+
+
+function gmRequest(details) {
+    return new Promise((resolve, reject) => {
+        GM.xmlHttpRequest({
+            ...details,
+            onload: resolve,
+            onerror: reject,
+            ontimeout: reject
+        });
+    });
+}
+
+
+// !!! Be careful, debugging might interfere the background fetch !!!
+async function fetchData(wp) {
+    try {
+        const response = await gmRequest({
+            method: "GET",
+            url: wp.href
+        });
+
+        console.log("*** fetch: url=" + wp.href + ", state=" + response.status + ":" + response.response);
+
+        wp.state = response.status;
+        // return response.response;
+        if (response.status == 200) {
+            wp.data = JSON.parse(response.response)
+            bgData.nrFetched++;
+        } else {
+            wp.data = { };
+        }
+
+        updateFetchState();
+
+    } catch (error) {
+        console.error("Requesting " + wp.href + " failed", error);
+        wp.data = { };
+        wp.state = "666";
+    }
+}
+
+
+function updateFetchState() {
+    var color;
+
+    if (bgData.nrProblems == 0) {
+        color = "black";
+        showButtons(1);
+    } else if (bgData.nrFetched < bgData.nrProblems) {
+        color = "red";
+    } else {
+        color = "green";
+        showButtons(1);
+    }
+
+    var d = document.getElementById("bgFetch");
+    if (d) {
+        d.innerHTML = '<font color="' + color + '">' + bgData.nrFetched + " of " + bgData.nrProblems + '</font> (' + (Date.now() - tStartBGFetch) + 'ms)';
+    }
+    d = document.getElementById("nrPOIs");
+    if (d) {
+        d.innerHTML = gpxx.meta.nrPOIs.should;
+    }
+    d = document.getElementById("nrHighlights");
+    if (d) {
+        d.innerHTML = gpxx.meta.nrHighlights.should;
+    }
+}
+
+
+// Check for waypoints without a name, then try to fetch data for those in background ...
+function checkWaypoints() {
+    bgData.nrProblems = 0;
+    gpxx.meta.nrHighlights.should = 0;
+    gpxx.meta.nrPOIs.should = 0;
+    tStartBGFetch = Date.now();
+    for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
+        let item = tour._embedded.way_points._embedded.items[i];
+
+        if (item.attributes.type == "highlight") {
+            gpxx.meta.nrHighlights.should++;
+        } else if (item.attributes.type == "poi") {
+            gpxx.meta.nrPOIs.should++;
+        }
+
+        if (item.attributes.type == "highlight" || item.attributes.type == "poi") {
+            if (!item?._syncedAttributes?._embedded?.reference?.name) {
+                cnt++;
+                let mocRef = item.links.reference.href; // .replace("https://", "//");
+                // let mocData = item.store.moc[mocRef];
+                let id = mocRef.split('/').pop();
+                console.log(cnt + ": waypoint Ref="+ mocRef + ", ID=" + id + " without a name ...");
+                bgData.nrProblems++;
+                bgData.waypoints.push({ id: id, wpItemIndex: i, href: mocRef, state: 0 });
+                fetchData(bgData.waypoints.at(-1)); // done in background
+            }
+        }
+    }
+
+    updateFetchState();
+}
+
+
+// Gather all hightlights and POIs into a gpxx object
+function collectWaypoints() {
+    if (gpxx.waypoints.length == 0) {
+        getDistsAlongTrack(tour._embedded.coordinates.items, gpxx.coordDists);
+        gpxx.meta.id = tour.id;
+        gpxx.meta.fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
+        gpxx.meta.name = tour.name;
+        fileName = gpxx.meta.fileName;
         if (tour._embedded.way_points._embedded.items.length > 0) {
-            fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
-            for (var i = 0, cnt = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
-                if (tour._embedded.way_points._embedded.items[i].attributes.type == "highlight" ||
-                    tour._embedded.way_points._embedded.items[i].attributes.type == "poi") {
-                    cnt++;
-                    try {
-                        const highlight = tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded.reference;
-                        var desc = "";
+            for (let i = 0; i < tour._embedded.way_points._embedded.items.length; i++) {
+                let waypoint = { flags: "", info: "" };
+                const item = tour._embedded.way_points._embedded.items[i];
 
-                        if (typeof highlight.name == 'undefined') {
-                            /* BTW: Why are there highlights without a name ??? */
-                            console.log("createGpxWptText: No name :( Continue for i=" + i);
-                            continue;
-                        }
+                if (item.attributes.type == "highlight") {
+                    let highlight;
 
-                        try {
-                            const tips = highlight._embedded.tips._embedded;
-                            if (tips.items.length > 0) {
-                                const attrs = tips.items[0].attributes;
-                                desc = sanitizeText(attrs.text);
-                            }
+                    // todo: add a try/catch for the whole block???
+
+                    if (item._syncedAttributes?._embedded?.reference?.name) {
+                        highlight = item._syncedAttributes._embedded.reference;
+                    } else {
+                        // Highlight waypoint with some data missing ...
+                        // Try to use data from previous background fetch ...
+                        const bgwp = bgData.waypoints.find(ele => (ele.wpItemIndex == i));
+                        highlight = bgwp.data;
+                        waypoint.flags += "B"; // 'B' => using background data
+
+                        if (highlight._links?.self?.deprecation) {
+                            waypoint.flags += "D"; // 'D' = deprecation
+                            waypoint.info = "Deprecated data? Please to try to re-add this highlight to your tour ...";
                         }
-                        catch {
-                            desc = "";
-                        }
-                        var alt = '0.000';
-                        if (typeof highlight.location.alt !== 'undefined') {
-                            alt = highlight.location.alt;
-                        } else {
-                            if (typeof highlight.mid_point !== 'undefined') {
-                                alt = highlight.mid_point.alt;
-                            }
-                        }
-                        console.log("createGpxWptText: i=" + i + "," + highlight.name + "," + highlight.location.lat + "," + highlight.location.lng);
-                        gpxWptText += getGpxWaypoint(sanitizeText(highlight.name), highlight.location.lat, highlight.location.lng, alt, desc);
                     }
-                    catch {
-                        alert("Info:\nSkipping highlight #" + i + " due to undefined _syncedAttributes._embedded.reference :(");
+
+                    waypoint.name = highlight.name;
+                    waypoint.type = highlight.type.replace('highlight_','').toUpperCase();
+
+                    if (waypoint.info == "") {
+                        if (highlight?._embedded?.tips?._embedded?.items[0]?.attributes?.text) {
+                            waypoint.info = highlight?._embedded?.tips?._embedded?.items[0]?.attributes?.text;
+                        }
                     }
+
+
+                    if (typeof highlight.start_point !== 'undefined') {
+                        waypoint.lat = highlight.start_point.lat;
+                        waypoint.lng = highlight.start_point.lng;
+                    } else {
+                        waypoint.lat = highlight.location.lat;
+                        waypoint.lng = highlight.location.lng;
+                    }
+
+                    if (typeof highlight.start_point !== 'undefined') {
+                        waypoint.alt = highlight.start_point.alt;
+                    } else if (typeof highlight.location.alt !== 'undefined') {
+                        waypoint.alt = highlight.location.alt;
+                    } else {
+                        waypoint.alt = item?.attributes?.index ? tour._embedded.coordinates.items[item.attributes.index].alt : "0.0000";
+                    }
+
+                    waypoint.dist = item?.attributes?.index ? gpxx.coordDists[item.attributes.index] : 0;
+
+                    gpxx.waypoints.push(waypoint);
+                    gpxx.meta.nrHighlights.is++;
+
+                } else if (item.attributes.type == "poi") {
+                    const poi = item._syncedAttributes._embedded.reference;
+                    waypoint.type = "POI";
+                    waypoint.name = poi.name;
+                    waypoint.info = "";
+
+                    if (poi._embedded?.details && poi._embedded?.details?.items?.length) {
+                        for(var j = 0; j < poi._embedded.details.items.length; j++) {
+                            waypoint.info += poi._embedded.details.items[j].key + ":" + poi._embedded.details.items[j].formatted + "; \n";
+                        }
+                    } else {
+                        waypoint.info = "";
+                    }
+
+                    waypoint.lat = poi.location.lat;
+                    waypoint.lng = poi.location.lng;
+                    waypoint.alt = item?.attributes?.index ? tour._embedded.coordinates.items[item.attributes.index].alt : "0.0000";
+                    waypoint.dist = item?.attributes?.index ? gpxx.coordDists[item.attributes.index] : "0.000";
+
+                    gpxx.waypoints.push(waypoint);
+                    gpxx.meta.nrPOIs.is++;
+
                 }
             }
         }
     }
 }
+
+
+// Get all highlights of tour as GPX waypoints
+function createGpxWptText() {
+    if (gpxWptText == "") {
+        for (var i = 0; i < gpxx.waypoints.length; i++) {
+            const wp = gpxx.waypoints[i];
+            gpxWptText += getGpxWaypoint(sanitizeText(wp.name), wp.lat, wp.lng, wp.alt, sanitizeText(wp.info));
+        }
+    }
+}
+
 
 // Get all points of the track itself
 function createGpxTrkText() {
@@ -385,8 +625,7 @@ function selectorContainsText(selector, text) {
   });
 }
 
-// "//a[contains(@href, '/highlight/')]",
-//         text = text + node.getAttribute('href') + "\n";
+
 // Subnode: . vor // sonst doch das ganze Dokument!
 function subEval(xpath, node)
 {
@@ -395,105 +634,99 @@ function subEval(xpath, node)
 }
 
 
+function showButtons(show) {
+ if (show) {
+    $("#dbg-button").show();
+    $("#gpx-button").show();
+    $("#csv-button").show();
+    $("#gpx-full-button").show();
+ } else {
+    $("#dbg-button").hide();
+    $("#gpx-button").hide();
+    $("#csv-button").hide();
+    $("#gpx-full-button").hide();
+ }
+}
+
+
 // Quick and dirty adding a menu
-var retry = 0; /* Retries to insert our menu */
 function addMenu() {
-    // check if there is a special SVG with title "loading"
-    var stillLoading = selectorContainsText("title", "loading"); // length currently 6 at the beginning ... if done 4 ...
 
-    console.log("addMenu:" + retry + ' stillLoading=' + stillLoading.length);
+    // "per copy JS path" ...
+    var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5");
+    var isFallback = false;
 
-    if (stillLoading.length <= 4 || retry >= MAX_RETRY) {
-        var add = document.createElement('div');
-        add.innerHTML = '<h2>' + S_HANDLER + ' (V' + S_HANDLER_VERSION + '): <b>' + S_NAME + '</b> (V' + S_VERSION +')</h2>';
-        add.innerHTML += '<p><small>Highlights=' + cntHighlights.toString() + ', POI=?, addMenu=' + retry.toString() + ' (re-)tries</small></p>';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POI without the GPX track itself into a GPX file" >Save as GPX ...</button>&nbsp';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POI plus the GPX-track in a single GPX file">Save as GPX (+track) ...</button>&nbsp';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" title="Save highlights and POI as CSV. Not yet implemented! Please use copy&paste to e.g. Libreoffice Calc from DEBUG-table">Save as CSV ...</button>&nbsp';
-        add.innerHTML += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some debug information about all highlights and POI found ...">DEBUG ...</button>&nbsp';
-        // "per copy JS path" ...
-        // old:
-        //   var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-beige-light.lg\\:tw-bg-white.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5 > div > div > div");
-        // new:
-        var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5");
-        if (pos) {
-           add.style.cssText += "padding: 0 0 0 25px;";
-        } else {
-            pos = document.querySelector("body"); // fallback position at first element of body ...
-            add.style.cssText += "padding: 75px 0 0 0;";
+    if (!pos && retry >= MAX_RETRY) {
+        pos = document.querySelector("body"); // fallback position at first element of body ...
+        isFallback = true;
+    }
+
+    console.log("addMenu: t=" + (Date.now() - tStart) + "ms, retry=" + retry + ', pos=' + pos);
+
+    if (pos) {
+        kmtProps = kmtBoot?.getProps();
+        if (kmtProps?.page?._embedded?.tour) {
+            tour = kmtProps.page._embedded.tour;
+            console.log("standard mode tour ...");
+        } else if (kmtProps?.page?._syncedAttributes?._embedded?.tour) {
+            tour = kmtProps.page._syncedAttributes._embedded.tour;
+            console.log("synced attributes mode tour...");
         }
-        add.setAttribute('id', 'menu-add');
-        pos.prepend(add); // todo ...
-        $("#dbg-button").click(clickButtonDbg);
-        $("#gpx-button").click(clickButtonGpx);
-        $("#gpx-full-button").click(clickButtonGpx);
-        $("#csv-button").click(clickButtonCSV);
-        retry = MAX_RETRY;
-        console.log("addMenu ... Done ...");
+
+        if (tour) {
+            console.log("tourName=" + tour?.name);
+        } else if (retry < MAX_RETRY) { // 60 * 250ms = 15s
+            retry++;
+            setTimeout(addMenu, 250);
+            return;
+        }
+    } else if (retry < MAX_RETRY) { // 60 * 250ms = 15s
+        retry++;
+        setTimeout(addMenu, 250);
+        return;
     }
 
-    if (retry < MAX_RETRY) { // 60 * 500ms = 30s
-        setTimeout(addMenu, 500);
+    if (!pos || !tour) {
+        console.log("Timeout ... No menu :(");
+        document.body.style.backgroundColor= "";
+        return;
     }
-    retry++;
+
+    var add = document.createElement('div');
+    var html;
+    html = '<p><small><b>' + S_NAME + '=V' + S_VERSION + '</b>, ' + S_HANDLER + '=V' + S_HANDLER_VERSION + '</small></p>';
+    html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-try=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms)';
+    html += ',<br><span title="Nr. of highlights with imcomplete data, to be fetched on our own in background http-requests ...">Background-fetch=<span id="bgFetch">0 of 0</span></span></small></p>';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some debug / preview information about all highlights and POIs found ...">Preview ...</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POIs without the GPX track itself into a GPX file" >Save as GPX ...</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POIs plus the GPX-track in a single GPX file">Save as GPX (+track) ...</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" title="Save highlights and POIs as CSV. Not yet implemented! Please use copy&paste to e.g. Libreoffice Calc from DEBUG-table">Save as CSV ...</button>&nbsp';
+    add.innerHTML = html;
+
+    if (isFallback) {
+        add.style.cssText += "padding: 75px 0 0 0;";
+    } else {
+        add.style.cssText += "padding: 0 0 0 25px;";
+    }
+
+    add.setAttribute('id', 'menu-add');
+    pos.prepend(add);
+    showButtons(0);
+    $("#dbg-button").click(clickButtonDbg);
+    $("#gpx-button").click(clickButtonGpx);
+    $("#gpx-full-button").click(clickButtonGpx);
+    $("#csv-button").click(clickButtonCSV);
+
+    checkWaypoints();
+
+    console.log("addMenu: t=" + (Date.now() - tStart) + "ms. Done ...");
+    document.body.style.backgroundColor= "";
 
 }
 
-// Try to insert out menu into Komoot page
-setTimeout(addMenu, 1000);
-
 
 (function() {
-    'use strict';
-
-    if (false) {
-        // debug only
-        var test;
-        test = subEval("//script/text()", document.body);
-        for (var x = 0; x < test.snapshotLength; x++) {
-            console.log(test.snapshotItem(x));
-        }
-    }
-
-    var courseObjs, node;
-    // Get all divs with class='tw-mb-6'
-    courseObjs = subEval("//div[@class='tw-mb-6']", document.body);
-
-    cntHighlights = 0;
-    for (var i = 0; i < courseObjs.snapshotLength; i++) {
-        var subObjs, objs, url, name, type, dist;
-
-        // Is course object a highlight?
-        subObjs = subEval(".//a[contains(@href, '/highlight/')]", courseObjs.snapshotItem(i));
-        if (subObjs.snapshotLength > 0) {
-            cntHighlights++;
-            // Yes, it is a highlight. Get link and name of highlight
-            url = subObjs.snapshotItem(0).getAttribute('href');
-            name = subObjs.snapshotItem(0).outerText;
-            // Get type of highlight
-            objs = subEval(".//p[@class='tw-text-secondary tw-mb-0']", courseObjs.snapshotItem(i));
-            if (objs.snapshotLength > 0) {
-                type = objs.snapshotItem(0).innerText;
-            } else {
-                type = "NIL";
-            }
-            // Get distance of highlight
-            objs = subEval(".//div[@class='tw-mt-1 tw-text-whisper']", courseObjs.snapshotItem(i));
-            if (objs.snapshotLength > 0) {
-                dist = objs.snapshotItem(0).innerText;
-            } else {
-                dist = "UNKNOWN";
-            }
-            console.log(url + ":" + name + ":" + type + ":" + dist);
-            try {
-                objDistances.push( {ref: url.replace(/\/.*\//, ""), name: sanitizeText(name), dst: dist });
-            }
-            catch {
-            }
-        }
-    }
-    //alert(text);
+    document.body.style.background= "#ffef75"; // give some "script launched" feedbacke to the user ...
+    // Try to insert our menu into Komoot page
+    setTimeout(addMenu, 2500); // give React some headstart ...
 })();
-
-
-

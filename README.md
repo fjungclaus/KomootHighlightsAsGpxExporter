@@ -3,26 +3,40 @@
 ## Description
 * This is a small Tampermonkey userscript to export your Komoot tour highlights as waypoints within a GPX file. 
 * The exported GPX file can be imported in Garmin BaseCamp or Garmin devices. I've tested this with an Oregon 600, a Fenix 6 and a Edge 1000+.
-* Might also run with Greasmonkey in Firefox, but I didn't find the time to test that until now ...
+* Might also run with Greasemonkey in Firefox, but I didn't find the time to test that until now ...
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
 ## Successfully tested with ...
-- 2024-10-27: Firefox 131.0.3 + Tampermonkey 5.3.1
-- 2024-10-27: Chrome 130.0.6723.70 + Tampermonkey 5.3.1
+- 0.9.39:
+   - 2025-06-01: Firefox 139.0.1 + Tampermonkey V5.3.3
+   - 2025-06-01: Chrome 137.0.7151.56 + Tampermonkey V5.3.3
+   - 2025-06-01: CSV import to LibreOffice Calc 25.2.3.2
+   - 2025-06-01: GPX import into Garmin BaseCamp 4.7.5
+   - 2025-06-01: GPX import into GarminConnect (https://connect.garmin.com/modern/courses)
+- 0.9.14:
+   - 2024-10-27: Firefox 131.0.3 + Tampermonkey 5.3.1
+   - 2024-10-27: Chrome 130.0.6723.70 + Tampermonkey 5.3.1
 
 ## Hints
-- If the menu buttons of this Tampermonkey scripts don't show up,
-reloading the page (e.g. by means of 'F5') might help.
+- If the menu buttons of this Tampermonkey scripts don't show up, reloading the page (e.g. by means of 'F5') might help
+   - Since 0.9.39 there wiil be a yellowish bar on the Komoot page during insertion of the script's menu
+- Use the button "Save as GPX (+ track)" to save highlights and POIs plus the GPX-track itself in a single GPX file
 
 ## Todos
 * ~~Have distance across the track of the highlights in the waypoint and CSV~~
 * ~~Allow exporting waypoints plus the GPX track itself in a single GPX file~~
-* Finish code for CSV export
+* ~~Finish code for CSV export~~
 * About page
 * Help page
 * Upload some screen shots to Github
 
 ## History
+* 0.9.40, 2025-06-01
+   * Massive rework / rewrite and some code cleanup
+   * No longer scrape the highlight's distance along track from the page's HTML source. Self calculate this within the script.
+   * Try to fetch names and coordinates of highlights with incomplete data by means of background xmlHttpRequests
+   * Implemented export as CSV
+   * Added some new screenshots   
 * 0.9.17, 2025-05-15
    * [As reported by malnvenshorn](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/2#issuecomment-2873009891) highlight #29 within https://www.komoot.com/de-de/tour/992841160 does not have a
      tour._embedded.way_points._embedded.items[i]._syncedAttributes._embedded property.
