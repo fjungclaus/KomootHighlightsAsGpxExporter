@@ -36,6 +36,9 @@
 * Put link to KomootHighlightsAsGpxExporter @ github into the status element
 
 ## History
+* 0.9.41, 2025-06-04
+   * Some small CSS changes
+   * Added link to github page
 * 0.9.40, 2025-06-01
    * Massive rework / rewrite and some code cleanup
    * No longer scrape the highlight's distance along track from the page's HTML source. Self calculate this within the script.
