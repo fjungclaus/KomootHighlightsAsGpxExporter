@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.40
+// @version      0.9.41
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -94,7 +94,7 @@ div #menu-add {
   background: #eeeeee;
   border-radius: 16px;
   margin-bottom: 15px;
-  border: 3px solid #6dac27;
+  border: 3px solid #4e6e1e;
 }
 
 #menu-add .ui-button {
@@ -114,9 +114,18 @@ div #menu-add {
   color: #144696;
 }
 
+#menu-add #gpx-full-button {
+  color: #4e6e1e;
+  border: 2px solid;
+}
+
+
 .ui-front {
     z-index: 255 !important;
 }
+
+#hrefprj { color: #144696; }
+#hrefprj:hover { color: #4e6e1e; }
 
 `);
 
@@ -694,7 +703,7 @@ function addMenu() {
 
     var add = document.createElement('div');
     var html;
-    html = '<p><small><b>' + S_NAME + '=V' + S_VERSION + '</b>, ' + S_HANDLER + '=V' + S_HANDLER_VERSION + '</small></p>';
+    html = '<p><small><b><a id="hrefprj" href="https://github.com/fjungclaus/KomootHighlightsAsGpxExporter">' + S_NAME + '</a>=V' + S_VERSION + '</b>, ' + S_HANDLER + '=V' + S_HANDLER_VERSION + '</small></p>';
     html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-try=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms)';
     html += ',<br><span title="Nr. of highlights with imcomplete data, to be fetched on our own in background http-requests ...">Background-fetch=<span id="bgFetch">0 of 0</span></span></small></p>';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some debug / preview information about all highlights and POIs found ...">Preview ...</button>&nbsp';
