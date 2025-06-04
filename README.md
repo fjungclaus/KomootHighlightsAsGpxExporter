@@ -2,7 +2,7 @@
 
 ## Description
 * This is a small Tampermonkey userscript to export your Komoot tour highlights as waypoints within a GPX file. 
-* The exported GPX file can be imported in Garmin BaseCamp or Garmin devices. I've tested this with an Oregon 600, a Fenix 6 and a Edge 1000+.
+* The exported GPX file can be imported in Garmin BaseCamp or Garmin devices. I've tested this with an Oregon 600, a Fenix 6, an Edge 1030+ and an Edge 1040.
 * Might also run with Greasemonkey in Firefox, but I didn't find the time to test that until now ...
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
@@ -33,7 +33,7 @@
 * Upload some screen shots to Github
 * Make highlight names editable in the preview dialog (e.g. Garmin Edge allows max. 15 chars for a waypoint's name)
 * Some words about installing Tampermonkey and how to add this script
-* Put link to KomootHighlightsAsGpxExporter @ github into the status element
+* ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
 * 0.9.41, 2025-06-04
