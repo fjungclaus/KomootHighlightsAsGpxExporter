@@ -36,6 +36,9 @@
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
+* 0.9.42, 2025-06-06
+   * [As reported by ezloj](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/3#issuecomment-2948301309) it is also necessary to match against URLs like https://www.komoot.com/tour/*
+   * Added some more URLs to exclude, because we don't want this script to kick in while editing, planning or customizing routes ...
 * 0.9.41, 2025-06-04
    * Some small CSS changes
    * Added link to github page

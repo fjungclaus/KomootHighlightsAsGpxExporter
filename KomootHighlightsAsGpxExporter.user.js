@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.41
+// @version      0.9.42
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -9,9 +9,14 @@
 // @updateURL    https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/raw/refs/heads/main/KomootHighlightsAsGpxExporter.user.js
 // @license      GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @match        https://*.komoot.com/*/tour/*
+// @match        https://*.komoot.com/tour/*
 // @match        https://*.komoot.de/tour/*
 // @exclude      https://*.komoot.de/tour/*/edit
+// @exclude      https://*.komoot.com/*/tour/*/edit
 // @exclude      https://*.komoot.com/tour/*/edit
+// @exclude      https://*.komoot.com/*/customize/tour/*
+// @exclude      https://*.komoot.com/plan*
+// @exclude      https://*.komoot.com/*/plan*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
 // @grant        GM_addStyle
@@ -704,8 +709,8 @@ function addMenu() {
     var add = document.createElement('div');
     var html;
     html = '<p><small><b><a id="hrefprj" href="https://github.com/fjungclaus/KomootHighlightsAsGpxExporter">' + S_NAME + '</a>=V' + S_VERSION + '</b>, ' + S_HANDLER + '=V' + S_HANDLER_VERSION + '</small></p>';
-    html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-try=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms)';
-    html += ',<br><span title="Nr. of highlights with imcomplete data, to be fetched on our own in background http-requests ...">Background-fetch=<span id="bgFetch">0 of 0</span></span></small></p>';
+    html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-Try=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms)';
+    html += ',<br><span title="Nr. of highlights with imcomplete data, to be fetched on our own in background http-requests ...">Background-Fetch=<span id="bgFetch">0 of 0</span></span></small></p>';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some debug / preview information about all highlights and POIs found ...">Preview ...</button>&nbsp';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POIs without the GPX track itself into a GPX file" >Save as GPX ...</button>&nbsp';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POIs plus the GPX-track in a single GPX file">Save as GPX (+track) ...</button>&nbsp';
