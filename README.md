@@ -39,6 +39,8 @@
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
+* 0.9.45, 2025-09-03
+   * Try an alternative menu position for devices with small displays / mobile devices. [See problem reported by luogni](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/5#issue-3327351091)
 * 0.9.44, 2025-09-03
    * Use mime type application/gpx+xml (and text/csv) instead of a simple text/plain, to get proper file suffixes for Firefox on Android, too. [Problem reported by luogni](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/6#issue-3327352630)
 * 0.9.42, 2025-06-06

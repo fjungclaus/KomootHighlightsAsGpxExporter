@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.44
+// @version      0.9.45
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -94,7 +94,7 @@ td {
   text-align: left;
 }
 
-div #menu-add {
+#menu-add {
   padding: 10px !important;
   background: #eeeeee;
   border-radius: 16px;
@@ -670,6 +670,11 @@ function addMenu() {
     var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5");
     var isFallback = false;
 
+    if (!pos) {
+        // "per copy JS path".  Try an alternative position for devices with small displays / mobile devices / ...
+        pos = document.querySelector("#pageMountNode > div.css-v14eqb > div:nth-child(2) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-3\\/5 > div > div > div > div:nth-child(2)");
+    }
+
     if (!pos && retry >= MAX_RETRY) {
         pos = document.querySelector("body"); // fallback position at first element of body ...
         isFallback = true;
@@ -718,7 +723,7 @@ function addMenu() {
     add.innerHTML = html;
 
     if (isFallback) {
-        add.style.cssText += "padding: 75px 0 0 0;";
+        add.style.cssText += "padding: 75px 0 20px 0;";
     } else {
         add.style.cssText += "padding: 0 0 0 25px;";
     }
