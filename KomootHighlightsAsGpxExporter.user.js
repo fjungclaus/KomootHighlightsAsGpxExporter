@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.42
+// @version      0.9.44
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -49,7 +49,7 @@ var showDebug = false;
 var retry = 0; /* Retries to insert our menu */
 var $ = window.$; // just to prevent warnings about "$ not defined" in tampermonkey editor
 var dbgText = "", gpxWptText = "", gpxTrkText = "", csvText = "";
-var fileName = "gpx.gpx";
+var fileName = "nil.txt";
 var gpxx = { waypoints: [], coordDists: [], meta: { nrHighlights: {is: 0, should: 0}, nrPOIs: {is: 0 , should: 0}, name: "-name-", id: "-id-" }};
 var bgData = {nrProblems: 0, nrFetched: 0, waypoints : []}; // background data (waypoints) fetched in background on our own ...
 const kmtBoot = unsafeWindow.kmtBoot;
@@ -249,13 +249,13 @@ function getGpxTrkpoint(coord) {
 }
 
 
-// Save given data to given filename
+// Save given data to given filename with given mime type (which defaults to text/plain)
 var saveData = (function () {
     var a = document.createElement("a");
     document.body.appendChild(a);
     a.style = "display: none";
-    return function (data, fileName) {
-        var blob = new Blob([data], {type: "text/plain"});
+    return function (data, fileName = "KHAGE.txt", mimeType = "text/plain") { // K)omootH)ighlightA)sG)pxE)xporter
+        var blob = new Blob([data], {type: mimeType});
         var url = window.URL.createObjectURL(blob);
         a.href = url;
         a.download = fileName;
@@ -268,7 +268,7 @@ var saveData = (function () {
 function clickButtonCSV(ev) {
     collectWaypoints();
     createCSVText();
-    saveData(csvText, fileName + ".csv"); // xxx.gpx.csv by intention!
+    saveData(csvText, fileName + ".csv", "text/csv");
 }
 
 
@@ -297,7 +297,7 @@ function clickButtonGpx(ev) {
     }
 
     txt+= getGpxFooter();
-    saveData(txt, fileName);
+    saveData(txt, fileName + ".gpx", "application/gpx+xml");
 
 }
 
@@ -521,7 +521,7 @@ function collectWaypoints() {
     if (gpxx.waypoints.length == 0) {
         getDistsAlongTrack(tour._embedded.coordinates.items, gpxx.coordDists);
         gpxx.meta.id = tour.id;
-        gpxx.meta.fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name) + '.gpx';
+        gpxx.meta.fileName = 'komoot-tour-gpx-wpt-export-' + sanitizeFileName(tour.name);
         gpxx.meta.name = tour.name;
         fileName = gpxx.meta.fileName;
         if (tour._embedded.way_points._embedded.items.length > 0) {

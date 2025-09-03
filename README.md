@@ -7,6 +7,8 @@
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
 ## Successfully tested with ...
+- 0.9.44:
+   - 2025-09-03: Firefox 142.0.1 on a tablet with Android 15 + Tampermonkey 5.3.3
 - 0.9.39:
    - 2025-06-01: Firefox 139.0.1 + Tampermonkey V5.3.3
    - 2025-06-01: Chrome 137.0.7151.56 + Tampermonkey V5.3.3
@@ -23,6 +25,7 @@
 ![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2016_46_19-yellowish-line-during-menu-insertion.jpg)
 - Use the button "Save as GPX (+ track)" to save highlights and POIs plus the GPX-track itself in a single GPX file
 ![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2017_12_29-button-gpx-plus-track.jpg)
+- Firefox 142 + Tampermonkey on Android currently only works if you activate FF's desktop-website mode. My menu does not properly appear for the Komoot mobile website. Fix in progress ...
 
 ## Todos
 * ~~Have distance across the track of the highlights in the waypoint and CSV~~
@@ -36,6 +39,8 @@
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
+* 0.9.44, 2025-09-03
+   * Use mime type application/gpx+xml (and text/csv) instead of a simple text/plain, to get proper file suffixes for Firefox on Android, too. [Problem reported by luogni](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/6#issue-3327352630)
 * 0.9.42, 2025-06-06
    * [As reported by ezloj](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/3#issuecomment-2948301309) it is also necessary to match against URLs like https://www.komoot.com/tour/*
    * Added some more URLs to exclude, because we don't want this script to kick in while editing, planning or customizing routes ...
