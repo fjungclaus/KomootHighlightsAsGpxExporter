@@ -39,6 +39,11 @@
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
+* 0.9.55, 2025-09-24
+   * Adaptions to Komoot's new page layout
+   * Added bulk edit for highlight names
+   * You can now truncate / limit highlight names to a user defined given length
+   * Let your browser translate highlight names and highlight infos. Then, by means of the "Fetch translation"-button, take those translations for the GPX or CSV export
 * 0.9.45, 2025-09-03
    * Try an alternative menu position for devices with small displays / mobile devices. [See problem reported by luogni](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues/5#issue-3327351091)
 * 0.9.44, 2025-09-03

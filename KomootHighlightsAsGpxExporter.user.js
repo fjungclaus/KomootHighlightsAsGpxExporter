@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.45
+// @version      0.9.55
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -45,6 +45,10 @@
 'use strict';
 
 
+
+const MAX_RETRY= 50; // max. retries to install our menu (MAX_RETRY * 250ms)
+const GPX_NAME_LENGTH_LIMIT = 15; // Limited to 15 chars on a Garmin Edge 1040
+
 var showDebug = false;
 var retry = 0; /* Retries to insert our menu */
 var $ = window.$; // just to prevent warnings about "$ not defined" in tampermonkey editor
@@ -59,9 +63,14 @@ const S_VERSION = GM_info.script.version;
 const S_NAME = GM_info.script.name;
 const S_HANDLER = GM_info.scriptHandler;
 const S_HANDLER_VERSION = GM_info.version;
-const MAX_RETRY= 60; // max. retries to install our menu (MAX_RETRY * 250ms)
 const tStart = Date.now();
 var tStartBGFetch = tStart;
+var khMenu = null;
+let posName = "NIL";
+var gpxNameLengthLimit = GPX_NAME_LENGTH_LIMIT;
+const EDIT_NAME_INPUT_DISPLAY_LIMIT = 32;
+
+
 
 // CSS
 GM_addStyle(`
@@ -95,14 +104,16 @@ td {
 }
 
 #menu-add {
-  padding: 10px !important;
+  width: 99%;
+  padding: 2px 0px 2px 5px !important;
   background: #eeeeee;
   border-radius: 16px;
-  margin-bottom: 15px;
-  border: 3px solid #4e6e1e;
+  margin-bottom: 2px;
+  border: 2px solid #4e6e1e;
 }
 
-#menu-add .ui-button {
+#menu-add .ui-button,
+#preview-buttons .ui-button{
   padding: 6px !important;
   margin: 10px 0 2px 0 !important;
   font-size: 0.75em !important;
@@ -111,10 +122,16 @@ td {
   transition: background-color 0.5s;
 }
 
+#preview-buttons button:hover,
 #menu-add button:hover {
   background-color: #b3b3b3;
 }
 
+div #preview-buttons {
+ margin-bottom: 5px;
+}
+
+#preview-buttons button,
 #menu-add button {
   color: #144696;
 }
@@ -124,9 +141,16 @@ td {
   border: 2px solid;
 }
 
+.wp_edit_input {
+ border: 1px dashed #000;
+}
 
 .ui-front {
     z-index: 255 !important;
+}
+
+#edit-table span {
+  display: block;
 }
 
 #hrefprj { color: #144696; }
@@ -265,6 +289,64 @@ var saveData = (function () {
 }());
 
 
+function changeOfEditNameLength(ev) {
+    gpxNameLengthLimit = Number($(ev.target).val()) ;
+
+    for (var i = 0; i < gpxx.waypoints.length; i++) {
+        const wp = gpxx.waypoints[i];
+        const inp = $("#wp_ed_name_input_" + i);
+
+        inp.attr('maxlength', gpxNameLengthLimit);
+
+        if (gpxNameLengthLimit < EDIT_NAME_INPUT_DISPLAY_LIMIT) {
+            inp.attr('size', gpxNameLengthLimit + 1);
+        } else {
+            inp.attr('size', EDIT_NAME_INPUT_DISPLAY_LIMIT);
+        }
+        inp.trigger('input'); // update color + length info
+    }
+}
+
+
+function clickFetchTranslationButton(ev) {
+    $('#edit-table tr').each(function() {
+        const i = Number($(this).find("td:nth-child(1)").text()); // 1 = Index
+        const cellValName = $(this).find("td:nth-child(4)").text(); // 4 = Genuine Name
+        const cellValInfo = $(this).find("td:nth-child(6)").text(); // 6 = Info
+        const inp = $("#wp_ed_name_input_" + (i-1));
+        const wp = gpxx.waypoints[i];
+
+        wp.info = cellValInfo;
+        inp.val(cellValName);
+        inp.trigger('input'); // update color + length info
+    });
+}
+
+function clickCpGenuineToEditedButton(ev) {
+    for (var i = 0; i < gpxx.waypoints.length; i++) {
+        const wp = gpxx.waypoints[i];
+        const inp = $("#wp_ed_name_input_" + i);
+
+        inp.val(escapeHtmlText(wp.name));
+        inp.trigger('input'); // update color + length info
+    }
+}
+
+
+function clickLimitEditedNameButton(ev) {
+    const limit = $("#edit-name-length-limit").val();
+
+    for (var i = 0; i < gpxx.waypoints.length; i++) {
+        const inp = $("#wp_ed_name_input_" + i);
+        const val = inp.val();
+        if (val.length > limit) {
+          inp.val(val.substr(0, limit));
+        }
+        inp.trigger('input'); // update color + length info
+   }
+}
+
+
 function clickButtonCSV(ev) {
     collectWaypoints();
     createCSVText();
@@ -272,13 +354,63 @@ function clickButtonCSV(ev) {
 }
 
 
+function clickButtonHide(ev) {
+    if (khMenu) {
+        khMenu.hidden = true;
+        khMenu = null;
+    }
+}
+
+
 function clickButtonDbg(ev) {
+    const addClickHandlers = dbgText == "" ? true : false; // add click handler only once!
+
     collectWaypoints();
     createDebugText();
     $("body").append(dbgText);
     $("#dialog").dialog({ autoOpen: false, maxHeight: 800, width: 1580, maxWidth: 1600, close: function() { showDebug = false; } });
     showDebug = !showDebug;
     $("#dialog").dialog(showDebug ? 'open' : 'close');
+
+    if (addClickHandlers) {
+        $("#limit-edited-name-button").click(clickLimitEditedNameButton);
+        $("#cp-genuine-to-edited-button").click(clickCpGenuineToEditedButton);
+        $('#edit-name-length-limit').on('input', changeOfEditNameLength);
+        $('#fetch-translation-from-html-button').click(clickFetchTranslationButton);
+
+        const lowerThreshold = 5;
+        for (var i = 0; i < gpxx.waypoints.length; i++) {
+            const inp = $("#wp_ed_name_input_" + i);
+
+            inp.on('input', function() {
+                try {
+                    const len = $(this).val().length;
+
+                    // arrgghhhh: recover waypoint array index from input box's id
+                    const parts = $(this).attr('id').split("_");
+                    const idx = parseInt(parts[parts.length - 1], 10);
+
+                    const maxLen = $(this).attr('maxlength');
+                    $("#wp_ed_name_len_" + idx).text(len + "/" + maxLen + ": ");
+
+                    if (len > gpxNameLengthLimit) {
+                        $(this).css('background-color', '#f8d7da'); // light red
+                    } else if (len < lowerThreshold) {
+                        $(this).css('background-color', '#fff3cd'); // light orange
+                    } else {
+                        $(this).css('background-color', '#d4edda'); // light green
+                    }
+                    gpxx.waypoints[idx].editedName = $(this).val();
+                    // must rebuild export data after editing a name
+                    purgeCSVText();
+                    purgeGpxWptText();
+                } catch(e) {
+                    console.error("Caught an error:", e);
+                }
+            });
+            inp.trigger('input');
+        }
+    }
 }
 
 
@@ -286,12 +418,12 @@ function clickButtonGpx(ev) {
     var txt;
     collectWaypoints();
     createGpxWptText();
-    txt = getGpxHeader("Tour=" + gpxx.meta.id + ", " + sanitizeText(gpxx.meta.name));
+    txt = getGpxHeader("Tour=" + gpxx.meta.id + ", " + escapeHtmlText(gpxx.meta.name));
     txt+= gpxWptText;
 
     if (ev.currentTarget.id == "gpx-full-button") {
         createGpxTrkText();
-        txt+= getGpxTrkpointHeader(sanitizeText(gpxx.meta.name));
+        txt+= getGpxTrkpointHeader(escapeHtmlText(gpxx.meta.name));
         txt+= gpxTrkText;
         txt+= getGpxTrkpointFooter();
     }
@@ -318,12 +450,17 @@ function sanitizeFileName(name) {
 
 
 // make it safe for xml / html
-function sanitizeText(txt) {
-    return txt.replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&apos;');
+function escapeHtmlText(txt) {
+    return txt.replace(/[&<>'"]/g, function (char) {
+    switch (char) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case "\"": return "&quot;";
+      case "'": return "&apos;";
+      default: return char;
+    }
+  });
 }
 
 
@@ -337,14 +474,20 @@ function createDebugText() {
     if (dbgText == "") {
         dbgText = '<div id="dialog" title="Highlights to GPX">';
         dbgText+= '<b>';
-        dbgText+= 'Tour Id=' + gpxx.meta.id + ', Name=' + sanitizeText(gpxx.meta.name);
+        dbgText+= 'Tour Id=' + gpxx.meta.id + ', Name=' + escapeHtmlText(gpxx.meta.name);
         dbgText+= ', Highlights=<font color="' + ((gpxx.meta.nrHighlights.is == gpxx.meta.nrHighlights.should) ? 'green' : 'red') + '">' + gpxx.meta.nrHighlights.is + '/' + gpxx.meta.nrHighlights.should + '</font>';
         dbgText+= ', POIs=<font color="' + ((gpxx.meta.nrPOIs.is == gpxx.meta.nrPOIs.should) ? 'green' : 'red') + '">' + gpxx.meta.nrPOIs.is + '/' + gpxx.meta.nrPOIs.should + '</font>';
         dbgText+= ', GPX track points=' + tour._embedded.coordinates.items.length;
         dbgText+= '</b>';
+        dbgText+= '<div id="preview-buttons">';
+        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="cp-genuine-to-edited-button" title="Copy the genuine names to the edited names">Genuine -> Edited</button>&nbsp;&nbsp;&nbsp;&nbsp;';
+        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="limit-edited-name-button" title="Limit length of edited names">Limit length</button>&nbsp;';
+        dbgText+= '  <input class="ui-button ui-widget ui-corner-all" id="edit-name-length-limit" title="Length to limit edited names to" type="number" min="5" max="255" value="' + gpxNameLengthLimit + '" required>&nbsp;&nbsp;&nbsp;&nbsp;';
+        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="fetch-translation-from-html-button" title="Fetch translated text for name and info from the table&apos;s HTML">Fetch translation</button>&nbsp;';
+        dbgText+= '</div>';
         if (gpxx.waypoints.length > 0) {
-            dbgText+= '<table>';
-            dbgText+= '<tr><th>#</th><th title="*** Flags\nB:background fetch\nD:deprecated data?">&#x1F6A9;</th><th>Type</th><th>Name</th><th>Info</th><th title="Latitude [°]">Lat</th><th title="longitude [°]">Lon</th><th title="Altitude [m]">Alt</th><th title="Distance along track [km]">Dist</th><tr>';
+            dbgText+= '<table id="edit-table">';
+            dbgText+= '<tr><th>#</th><th title="*** Flags\nB:background fetch\nD:deprecated data?">&#x1F6A9;</th><th>Type</th><th>Genuine name</th><th>Edited name<br>for the export</th><th>Info</th><th title="Latitude [°]">Lat</th><th title="longitude [°]">Lon</th><th title="Altitude [m]">Alt</th><th title="Distance along track [km]">Dist</th><tr>';
             for (var i = 0; i < gpxx.waypoints.length; i++) {
                 const wp = gpxx.waypoints[i];
                 const color = wp.flags.includes('D') ? "red" : wp.flags.includes('B') ? "orange" : "black";
@@ -353,8 +496,13 @@ function createDebugText() {
                 dbgText+= '<td>' + (i + 1) + '</td>';
                 dbgText+= '<td>' + wp.flags + '</td>';
                 dbgText+= '<td>' + wp.type + '</td>';
-                dbgText+= '<td>' + htmlColorize(sanitizeText(wp.name), color) + '</td>';
-                dbgText+= '<td>' + htmlColorize(sanitizeText(wp.info).replaceAll("\n" , "<br>"), color) + '</td>';
+                dbgText+= '<td>' + htmlColorize(escapeHtmlText(wp.name), color) + '</td>';
+                dbgText+= '<td><div>';
+                dbgText+= ' <span id="wp_ed_name_len_' + i + '">? of ?</span>';
+                dbgText+= ' <input type="text" class="wp_edit_input" id="wp_ed_name_input_' + i + '" size="' + (gpxNameLengthLimit + 1) + '" maxlength="' + gpxNameLengthLimit + '" autocomplete="off" spellcheck="false" value="' + escapeHtmlText(wp.editedName) + '"/>&nbsp;'; // to don't used fixed value of 15
+                dbgText+= '</div></td>'
+                dbgText+= '</td>';
+                dbgText+= '<td>' + htmlColorize(escapeHtmlText(wp.info).replaceAll("\n" , "<br>"), color) + '</td>';
                 dbgText+= '<td>' + wp.lat + '</td>';
                 dbgText+= '<td>' + wp.lng + '</td>';
                 dbgText+= '<td>' + wp.alt + '</td>';
@@ -386,6 +534,11 @@ function addCSVElement(ele, first, last) {
     return csva;
 }
 
+function purgeCSVText() {
+    if (csvText != "") {
+        csvText = "";
+    }
+}
 
 function createCSVText() {
     if (csvText == "") {
@@ -395,13 +548,14 @@ function createCSVText() {
         csvText+= addCSVElement(gpxx.meta.name, 0, 1);
 
         if (gpxx.waypoints.length > 0) {
-            csvText+= '"#","Flags","Type","Name","Latitude","Longitude","Altitude","Distance","Info"\n';
+            csvText+= '"#","Flags","Type","Name","Edited-Name","Latitude","Longitude","Altitude","Distance","Info"\n';
             for (var i = 0; i < gpxx.waypoints.length; i++) {
                 const wp = gpxx.waypoints[i];
                 csvText+= addCSVElement(i+1, 1, 0);
                 csvText+= addCSVElement(wp.flags, 0, 0);
                 csvText+= addCSVElement(wp.type, 0, 0);
                 csvText+= addCSVElement(wp.name, 0, 0);
+                csvText+= addCSVElement(wp.editedName, 0, 0);
                 csvText+= addCSVElement(wp.lat, 0, 0);
                 csvText+= addCSVElement(wp.lng, 0, 0);
                 csvText+= addCSVElement(wp.alt, 0, 0);
@@ -550,6 +704,7 @@ function collectWaypoints() {
                     }
 
                     waypoint.name = highlight.name;
+                    waypoint.editedName = highlight.name;
                     waypoint.type = highlight.type.replace('highlight_','').toUpperCase();
 
                     if (waypoint.info == "") {
@@ -584,6 +739,7 @@ function collectWaypoints() {
                     const poi = item._syncedAttributes._embedded.reference;
                     waypoint.type = "POI";
                     waypoint.name = poi.name;
+                    waypoint.editedName = poi.name;
                     waypoint.info = "";
 
                     if (poi._embedded?.details && poi._embedded?.details?.items?.length) {
@@ -608,13 +764,18 @@ function collectWaypoints() {
     }
 }
 
+function purgeGpxWptText() {
+    if (gpxWptText != "") {
+        gpxWptText = "";
+    }
+}
 
 // Get all highlights of tour as GPX waypoints
 function createGpxWptText() {
     if (gpxWptText == "") {
         for (var i = 0; i < gpxx.waypoints.length; i++) {
             const wp = gpxx.waypoints[i];
-            gpxWptText += getGpxWaypoint(sanitizeText(wp.name), wp.lat, wp.lng, wp.alt, sanitizeText(wp.info));
+            gpxWptText += getGpxWaypoint(escapeHtmlText(wp.editedName), wp.lat, wp.lng, wp.alt, escapeHtmlText(wp.info));
         }
     }
 }
@@ -666,21 +827,44 @@ function showButtons(show) {
 // Quick and dirty adding a menu
 function addMenu() {
 
-    // "per copy JS path" ...
-    var pos = document.querySelector("#pageMountNode > div > div:nth-child(3) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5");
-    var isFallback = false;
+    let pos = null;
+    let addCSS = "";
 
-    if (!pos) {
-        // "per copy JS path".  Try an alternative position for devices with small displays / mobile devices / ...
-        pos = document.querySelector("#pageMountNode > div.css-v14eqb > div:nth-child(2) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-3\\/5 > div > div > div > div:nth-child(2)");
-    }
+    // Where to prepend the menu? Selector "per copy JS path" ...
+    const possiblePositions = [
+        { name: "NEW:A",
+          selector: "#pageMountNode > div > div.css-mwvj2n > div > div.css-147pytd > div.css-17cyh89",
+          addCSS: ""
+        },
+        { name: "OLD:A",
+          selector: "#pageMountNode > div > div:nth-child(3) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-2\\/5",
+          addCSS: "padding: 0 0 0 25px;"
+        },
+        { name: "OLD:B",
+          selector: "#pageMountNode > div.css-v14eqb > div:nth-child(2) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-3\\/5 > div > div > div > div:nth-child(2)",
+          addCSS: ""
+        }
+    ];
+
+    for(const p of possiblePositions) {
+        if ((pos = document.querySelector(p.selector))) {
+            addCSS = p.addCSS;
+            posName = p.name;
+            break;
+        }
+    };
 
     if (!pos && retry >= MAX_RETRY) {
-        pos = document.querySelector("body"); // fallback position at first element of body ...
-        isFallback = true;
+        pos = document.querySelector("header"); // a final fallback position
+        addCSS = "margin-top: 150px";
+        posName = "FALLBACK!!!"
+        alert("KomootHighlightsAsGpxExporter\nMenu insertion failed!\nThey probably changed the page layout!\n\nUsing fallback position!");
     }
 
     console.log("addMenu: t=" + (Date.now() - tStart) + "ms, retry=" + retry + ', pos=' + pos);
+
+    const alpha = (MAX_RETRY - retry) / MAX_RETRY;
+    document.body.style.background= `rgba(255, 239, 117, ${alpha})`; // fade out yellow background color ...
 
     if (pos) {
         kmtProps = kmtBoot?.getProps();
@@ -707,30 +891,28 @@ function addMenu() {
 
     if (!pos || !tour) {
         console.log("Timeout ... No menu :(");
-        document.body.style.backgroundColor= "";
+        document.body.style.backgroundColor= ""; // disable yellow background color
         return;
     }
 
-    var add = document.createElement('div');
+    khMenu = document.createElement('div');
     var html;
     html = '<p><small><b><a id="hrefprj" href="https://github.com/fjungclaus/KomootHighlightsAsGpxExporter">' + S_NAME + '</a>=V' + S_VERSION + '</b>, ' + S_HANDLER + '=V' + S_HANDLER_VERSION + '</small></p>';
-    html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-Try=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms)';
+    html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-Try=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms, ' + posName + ')';
     html += ',<br><span title="Nr. of highlights with imcomplete data, to be fetched on our own in background http-requests ...">Background-Fetch=<span id="bgFetch">0 of 0</span></span></small></p>';
-    html += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some debug / preview information about all highlights and POIs found ...">Preview ...</button>&nbsp';
-    html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POIs without the GPX track itself into a GPX file" >Save as GPX ...</button>&nbsp';
-    html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POIs plus the GPX-track in a single GPX file">Save as GPX (+track) ...</button>&nbsp';
-    html += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" title="Save highlights and POIs as CSV. Not yet implemented! Please use copy&paste to e.g. Libreoffice Calc from DEBUG-table">Save as CSV ...</button>&nbsp';
-    add.innerHTML = html;
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="hide-button" title="Hide menu. Reload the page to get the menu back!">X</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some preview information about all highlights and POIs found. You can also edit POI names here ...">Preview&Edit</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POIs without the GPX track itself into a GPX file" >Save GPX</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POIs plus the GPX-track in a single GPX file">Save GPX&amp;track</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" title="Save highlights and POIs as CSV.">Save CSV</button>&nbsp';
+    khMenu.innerHTML = html;
 
-    if (isFallback) {
-        add.style.cssText += "padding: 75px 0 20px 0;";
-    } else {
-        add.style.cssText += "padding: 0 0 0 25px;";
-    }
+    khMenu.style.cssText += addCSS;
 
-    add.setAttribute('id', 'menu-add');
-    pos.prepend(add);
+    khMenu.setAttribute('id', 'menu-add');
+    pos.prepend(khMenu);
     showButtons(0);
+    $("#hide-button").click(clickButtonHide);
     $("#dbg-button").click(clickButtonDbg);
     $("#gpx-button").click(clickButtonGpx);
     $("#gpx-full-button").click(clickButtonGpx);
@@ -738,14 +920,13 @@ function addMenu() {
 
     checkWaypoints();
 
-    console.log("addMenu: t=" + (Date.now() - tStart) + "ms. Done ...");
+    console.log("addMenu: t=" + (Date.now() - tStart) + "ms. Done ..." + " Pos=" + posName);
     document.body.style.backgroundColor= "";
-
 }
 
 
 (function() {
-    document.body.style.background= "#ffef75"; // give some "script launched" feedbacke to the user ...
+    document.body.style.background= "rgba(255, 239, 117, 1)"; // give some "script launched" feedback to the user by setting background to yellow ...
     // Try to insert our menu into Komoot page
     setTimeout(addMenu, 2500); // give React some headstart ...
 })();
