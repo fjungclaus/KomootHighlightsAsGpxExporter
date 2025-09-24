@@ -34,7 +34,7 @@
 * About page
 * Help page
 * Upload some screen shots to Github
-* Make highlight names editable in the preview dialog (e.g. Garmin Edge allows max. 15 chars for a waypoint's name)
+* ~~Make highlight names editable in the preview dialog (e.g. Garmin Edge allows max. 15 chars for a waypoint's name)~~
 * Some words about installing Tampermonkey and how to add this script
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
