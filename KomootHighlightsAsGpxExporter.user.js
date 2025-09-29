@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.55
+// @version      0.9.56
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -14,6 +14,8 @@
 // @exclude      https://*.komoot.de/tour/*/edit
 // @exclude      https://*.komoot.com/*/tour/*/edit
 // @exclude      https://*.komoot.com/tour/*/edit
+// @exclude      https://*.komoot.com/*/tour/*/print
+// @exclude      https://*.komoot.com/tour/*/print
 // @exclude      https://*.komoot.com/*/customize/tour/*
 // @exclude      https://*.komoot.com/plan*
 // @exclude      https://*.komoot.com/*/plan*
@@ -480,14 +482,14 @@ function createDebugText() {
         dbgText+= ', GPX track points=' + tour._embedded.coordinates.items.length;
         dbgText+= '</b>';
         dbgText+= '<div id="preview-buttons">';
-        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="cp-genuine-to-edited-button" title="Copy the genuine names to the edited names">Genuine -> Edited</button>&nbsp;&nbsp;&nbsp;&nbsp;';
-        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="limit-edited-name-button" title="Limit length of edited names">Limit length</button>&nbsp;';
-        dbgText+= '  <input class="ui-button ui-widget ui-corner-all" id="edit-name-length-limit" title="Length to limit edited names to" type="number" min="5" max="255" value="' + gpxNameLengthLimit + '" required>&nbsp;&nbsp;&nbsp;&nbsp;';
-        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="fetch-translation-from-html-button" title="Fetch translated text for name and info from the table&apos;s HTML">Fetch translation</button>&nbsp;';
+        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="cp-genuine-to-edited-button" title="Copy the genuine names to the Edited names">Genuine -> Edited</button>&nbsp;&nbsp;&nbsp;&nbsp;';
+        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="limit-edited-name-button" title="Limit length of Edited names">Limit length</button>&nbsp;';
+        dbgText+= '  <input class="ui-button ui-widget ui-corner-all" id="edit-name-length-limit" title="Length to limit Edited names to" type="number" min="5" max="255" value="' + gpxNameLengthLimit + '" required>&nbsp;&nbsp;&nbsp;&nbsp;';
+        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="fetch-translation-from-html-button" title="Fetch translated text for Name and Info from the table&apos;s HTML and copy it to the Edited name input boxes">Fetch translation</button>&nbsp;';
         dbgText+= '</div>';
         if (gpxx.waypoints.length > 0) {
             dbgText+= '<table id="edit-table">';
-            dbgText+= '<tr><th>#</th><th title="*** Flags\nB:background fetch\nD:deprecated data?">&#x1F6A9;</th><th>Type</th><th>Genuine name</th><th>Edited name<br>for the export</th><th>Info</th><th title="Latitude [°]">Lat</th><th title="longitude [°]">Lon</th><th title="Altitude [m]">Alt</th><th title="Distance along track [km]">Dist</th><tr>';
+            dbgText+= '<tr><th>#</th><th title="*** Flags\nB:background fetch\nD:deprecated data?">&#x1F6A9;</th><th>Type</th><th>Genuine name</th><th>Edited name<br>for the export to GPX or CSV</th><th>Info</th><th title="Latitude [°]">Lat</th><th title="longitude [°]">Lon</th><th title="Altitude [m]">Alt</th><th title="Distance along track [km]">Dist</th><tr>';
             for (var i = 0; i < gpxx.waypoints.length; i++) {
                 const wp = gpxx.waypoints[i];
                 const color = wp.flags.includes('D') ? "red" : wp.flags.includes('B') ? "orange" : "black";
@@ -858,7 +860,7 @@ function addMenu() {
         pos = document.querySelector("header"); // a final fallback position
         addCSS = "margin-top: 150px";
         posName = "FALLBACK!!!"
-        alert("KomootHighlightsAsGpxExporter\nMenu insertion failed!\nThey probably changed the page layout!\n\nUsing fallback position!");
+        alert("KomootHighlightsAsGpxExporter\nMenu insertion failed!\nThey probably changed the page layout!\n\nTrying to use a fallback position!");
     }
 
     console.log("addMenu: t=" + (Date.now() - tStart) + "ms, retry=" + retry + ', pos=' + pos);

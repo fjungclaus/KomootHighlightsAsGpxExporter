@@ -7,6 +7,10 @@
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
 ## Successfully tested with ...
+- 0.9.56:
+   -  2025-09-29: Firefox 143.0.1 + Tampermonkey V5.3.3
+   -  2025-09-29: Chrome 140.0.7339.208 + Tampermonkey V5.3.3
+   -  2025-09-29: Firefox 143.0.2 on a tablet with Android 15 + Tampermonkey 5.3.3
 - 0.9.44:
    - 2025-09-03: Firefox 142.0.1 on a tablet with Android 15 + Tampermonkey 5.3.3
 - 0.9.39:
@@ -39,6 +43,9 @@
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
+* 0.9.56, 2025-09-29
+   * Tried to exclude Komoot's print-pages
+   * Some minor changes to button help texts
 * 0.9.55, 2025-09-24
    * Adaptions to Komoot's new page layout
    * Added bulk edit for highlight names
