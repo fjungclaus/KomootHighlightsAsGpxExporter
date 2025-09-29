@@ -43,6 +43,7 @@
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
+* 0.9.57, 2025-09-30, Bugfix: Off-by-1 while fetching translations ...
 * 0.9.56, 2025-09-29
    * Tried to exclude Komoot's print-pages
    * Some minor changes to button help texts

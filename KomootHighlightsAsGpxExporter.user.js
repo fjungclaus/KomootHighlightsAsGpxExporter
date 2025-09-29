@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.56
+// @version      0.9.57
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -312,15 +312,22 @@ function changeOfEditNameLength(ev) {
 
 function clickFetchTranslationButton(ev) {
     $('#edit-table tr').each(function() {
-        const i = Number($(this).find("td:nth-child(1)").text()); // 1 = Index
-        const cellValName = $(this).find("td:nth-child(4)").text(); // 4 = Genuine Name
-        const cellValInfo = $(this).find("td:nth-child(6)").text(); // 6 = Info
-        const inp = $("#wp_ed_name_input_" + (i-1));
-        const wp = gpxx.waypoints[i];
+        var i, cellValName, cellValInfo;
 
-        wp.info = cellValInfo;
-        inp.val(cellValName);
-        inp.trigger('input'); // update color + length info
+        try {
+            i = Number($(this).find("td:nth-child(1)").text()) - 1; // 1 = Index 
+            if (i >= 0) {
+                cellValName = $(this).find("td:nth-child(4)").text(); // 4 = Genuine Name
+                cellValInfo = $(this).find("td:nth-child(6)").text(); // 6 = Info
+                const inp = $("#wp_ed_name_input_" + i);
+                const wp = gpxx.waypoints[i];
+                wp.info = cellValInfo;
+                inp.val(cellValName);
+                inp.trigger('input'); // update color + length info
+            }
+        } catch (e) {
+            console.error("Fetch translation: i=" + i + "\nCaught an error:", e);
+        }
     });
 }
 
