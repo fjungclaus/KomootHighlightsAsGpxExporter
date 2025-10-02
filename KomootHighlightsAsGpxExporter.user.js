@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.57
+// @version      0.9.65
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -16,6 +16,10 @@
 // @exclude      https://*.komoot.com/tour/*/edit
 // @exclude      https://*.komoot.com/*/tour/*/print
 // @exclude      https://*.komoot.com/tour/*/print
+// @exclude      https://*.komoot.com/*/tour/*/zoom
+// @exclude      https://*.komoot.com/tour/*/zoom
+// @exclude      https://*.komoot.com/*/tour/*/gallery
+// @exclude      https://*.komoot.com/tour/*/gallery
 // @exclude      https://*.komoot.com/*/customize/tour/*
 // @exclude      https://*.komoot.com/plan*
 // @exclude      https://*.komoot.com/*/plan*
@@ -54,7 +58,7 @@ const GPX_NAME_LENGTH_LIMIT = 15; // Limited to 15 chars on a Garmin Edge 1040
 var showDebug = false;
 var retry = 0; /* Retries to insert our menu */
 var $ = window.$; // just to prevent warnings about "$ not defined" in tampermonkey editor
-var dbgText = "", gpxWptText = "", gpxTrkText = "", csvText = "";
+var previewEditText = "", gpxWptText = "", gpxTrkText = "", csvText = "";
 var fileName = "nil.txt";
 var gpxx = { waypoints: [], coordDists: [], meta: { nrHighlights: {is: 0, should: 0}, nrPOIs: {is: 0 , should: 0}, name: "-name-", id: "-id-" }};
 var bgData = {nrProblems: 0, nrFetched: 0, waypoints : []}; // background data (waypoints) fetched in background on our own ...
@@ -291,6 +295,15 @@ var saveData = (function () {
 }());
 
 
+function debounce(func, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+
 function changeOfEditNameLength(ev) {
     gpxNameLengthLimit = Number($(ev.target).val()) ;
 
@@ -311,25 +324,32 @@ function changeOfEditNameLength(ev) {
 
 
 function clickFetchTranslationButton(ev) {
-    $('#edit-table tr').each(function() {
+    let ttr = $("table#edit-table > tbody > tr");
+    console.log("clickFetchTranslationButton: ev.type=" + ev.type + ", length=" + ttr.length);
+
+    ttr.each(function(index, row) {
         var i, cellValName, cellValInfo;
 
         try {
-            i = Number($(this).find("td:nth-child(1)").text()) - 1; // 1 = Index 
+            i = Number($(row).find("td").eq(0).text()) - 1; // 0 = column 1 = Highlight's index
             if (i >= 0) {
-                cellValName = $(this).find("td:nth-child(4)").text(); // 4 = Genuine Name
-                cellValInfo = $(this).find("td:nth-child(6)").text(); // 6 = Info
+                cellValName = $(row).find('td').eq(3).text(); // 3 = column 4 = Genuine Name
+                console.log("  #" + (i + 1) + " name=" + cellValName);
+                cellValInfo = $(row).find("td").eq(5).text(); // 5 = column 6 = Info
                 const inp = $("#wp_ed_name_input_" + i);
                 const wp = gpxx.waypoints[i];
                 wp.info = cellValInfo;
                 inp.val(cellValName);
-                inp.trigger('input'); // update color + length info
+                setTimeout(inp.trigger('input'), 250); // update color + length info
+            } else {
+                console.log("  #" + (i + 1));
             }
         } catch (e) {
-            console.error("Fetch translation: i=" + i + "\nCaught an error:", e);
+            console.error("Fetch translation: i=" + i + " #" + (i + 1) + " \nCaught an error:", e);
         }
     });
 }
+
 
 function clickCpGenuineToEditedButton(ev) {
     for (var i = 0; i < gpxx.waypoints.length; i++) {
@@ -372,12 +392,11 @@ function clickButtonHide(ev) {
 
 
 function clickButtonDbg(ev) {
-    const addClickHandlers = dbgText == "" ? true : false; // add click handler only once!
+    const addClickHandlers = previewEditText == "" ? true : false; // add click handler only once!
 
     collectWaypoints();
     createDebugText();
-    $("body").append(dbgText);
-    $("#dialog").dialog({ autoOpen: false, maxHeight: 800, width: 1580, maxWidth: 1600, close: function() { showDebug = false; } });
+    $("#dialog").dialog({ autoOpen: false, maxHeight: 800, width: 1580, maxWidth: 1600, close: function() { console.log("#dialog close"); showDebug = false; } });
     showDebug = !showDebug;
     $("#dialog").dialog(showDebug ? 'open' : 'close');
 
@@ -391,7 +410,7 @@ function clickButtonDbg(ev) {
         for (var i = 0; i < gpxx.waypoints.length; i++) {
             const inp = $("#wp_ed_name_input_" + i);
 
-            inp.on('input', function() {
+            inp.on('input', debounce(function() {
                 try {
                     const len = $(this).val().length;
 
@@ -416,7 +435,8 @@ function clickButtonDbg(ev) {
                 } catch(e) {
                     console.error("Caught an error:", e);
                 }
-            });
+            }, 100)); // 100 milliseconds debounce delay
+
             inp.trigger('input');
         }
     }
@@ -479,50 +499,52 @@ function htmlColorize(txt, color) {
 
 
 // A jQuery dialog with some debug data
-function createDebugText() {
-    if (dbgText == "") {
-        dbgText = '<div id="dialog" title="Highlights to GPX">';
-        dbgText+= '<b>';
-        dbgText+= 'Tour Id=' + gpxx.meta.id + ', Name=' + escapeHtmlText(gpxx.meta.name);
-        dbgText+= ', Highlights=<font color="' + ((gpxx.meta.nrHighlights.is == gpxx.meta.nrHighlights.should) ? 'green' : 'red') + '">' + gpxx.meta.nrHighlights.is + '/' + gpxx.meta.nrHighlights.should + '</font>';
-        dbgText+= ', POIs=<font color="' + ((gpxx.meta.nrPOIs.is == gpxx.meta.nrPOIs.should) ? 'green' : 'red') + '">' + gpxx.meta.nrPOIs.is + '/' + gpxx.meta.nrPOIs.should + '</font>';
-        dbgText+= ', GPX track points=' + tour._embedded.coordinates.items.length;
-        dbgText+= '</b>';
-        dbgText+= '<div id="preview-buttons">';
-        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="cp-genuine-to-edited-button" title="Copy the genuine names to the Edited names">Genuine -> Edited</button>&nbsp;&nbsp;&nbsp;&nbsp;';
-        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="limit-edited-name-button" title="Limit length of Edited names">Limit length</button>&nbsp;';
-        dbgText+= '  <input class="ui-button ui-widget ui-corner-all" id="edit-name-length-limit" title="Length to limit Edited names to" type="number" min="5" max="255" value="' + gpxNameLengthLimit + '" required>&nbsp;&nbsp;&nbsp;&nbsp;';
-        dbgText+= '  <button class="ui-button ui-widget ui-corner-all" id="fetch-translation-from-html-button" title="Fetch translated text for Name and Info from the table&apos;s HTML and copy it to the Edited name input boxes">Fetch translation</button>&nbsp;';
-        dbgText+= '</div>';
+function createDebugText() { // to rename
+    if (previewEditText == "") {
+        previewEditText = '<div id="dialog" title="Highlights to GPX">';
+        previewEditText+= '<b>';
+        previewEditText+= 'Tour Id=' + gpxx.meta.id + ', Name=' + escapeHtmlText(gpxx.meta.name);
+        previewEditText+= ', Highlights=<font color="' + ((gpxx.meta.nrHighlights.is == gpxx.meta.nrHighlights.should) ? 'green' : 'red') + '">' + gpxx.meta.nrHighlights.is + '/' + gpxx.meta.nrHighlights.should + '</font>';
+        previewEditText+= ', POIs=<font color="' + ((gpxx.meta.nrPOIs.is == gpxx.meta.nrPOIs.should) ? 'green' : 'red') + '">' + gpxx.meta.nrPOIs.is + '/' + gpxx.meta.nrPOIs.should + '</font>';
+        previewEditText+= ', GPX track points=' + tour._embedded.coordinates.items.length;
+        previewEditText+= '</b>';
+        previewEditText+= '<div id="preview-buttons">';
+        previewEditText+= '  <button class="ui-button ui-widget ui-corner-all" id="cp-genuine-to-edited-button" title="Copy the genuine names to the Edited names">Genuine -> Edited</button>&nbsp;&nbsp;&nbsp;&nbsp;';
+        previewEditText+= '  <button class="ui-button ui-widget ui-corner-all" id="limit-edited-name-button" title="Limit length of Edited names">Limit length</button>&nbsp;';
+        previewEditText+= '  <input class="ui-button ui-widget ui-corner-all" id="edit-name-length-limit" title="Length to limit Edited names to" type="number" min="5" max="255" value="' + gpxNameLengthLimit + '" required>&nbsp;&nbsp;&nbsp;&nbsp;';
+        previewEditText+= '  <button class="ui-button ui-widget ui-corner-all" id="fetch-translation-from-html-button" title="Fetch translated text for Name and Info from the table&apos;s HTML and copy it to the Edited name input boxes">Fetch translation</button>&nbsp;';
+        previewEditText+= '</div>';
         if (gpxx.waypoints.length > 0) {
-            dbgText+= '<table id="edit-table">';
-            dbgText+= '<tr><th>#</th><th title="*** Flags\nB:background fetch\nD:deprecated data?">&#x1F6A9;</th><th>Type</th><th>Genuine name</th><th>Edited name<br>for the export to GPX or CSV</th><th>Info</th><th title="Latitude [°]">Lat</th><th title="longitude [°]">Lon</th><th title="Altitude [m]">Alt</th><th title="Distance along track [km]">Dist</th><tr>';
+            previewEditText+= '<table id="edit-table">';
+            previewEditText+= '<tr><th>#</th><th title="*** Flags\nB:background fetch\nD:deprecated data?">&#x1F6A9;</th><th>Type</th><th>Genuine name</th><th>Edited name<br>for the export to GPX or CSV</th><th>Info</th><th title="Latitude [°]">Lat</th><th title="longitude [°]">Lon</th><th title="Altitude [m]">Alt</th><th title="Distance along track [km]">Dist</th><tr>';
             for (var i = 0; i < gpxx.waypoints.length; i++) {
                 const wp = gpxx.waypoints[i];
                 const color = wp.flags.includes('D') ? "red" : wp.flags.includes('B') ? "orange" : "black";
 
-                dbgText+= '<tr>';
-                dbgText+= '<td>' + (i + 1) + '</td>';
-                dbgText+= '<td>' + wp.flags + '</td>';
-                dbgText+= '<td>' + wp.type + '</td>';
-                dbgText+= '<td>' + htmlColorize(escapeHtmlText(wp.name), color) + '</td>';
-                dbgText+= '<td><div>';
-                dbgText+= ' <span id="wp_ed_name_len_' + i + '">? of ?</span>';
-                dbgText+= ' <input type="text" class="wp_edit_input" id="wp_ed_name_input_' + i + '" size="' + (gpxNameLengthLimit + 1) + '" maxlength="' + gpxNameLengthLimit + '" autocomplete="off" spellcheck="false" value="' + escapeHtmlText(wp.editedName) + '"/>&nbsp;'; // to don't used fixed value of 15
-                dbgText+= '</div></td>'
-                dbgText+= '</td>';
-                dbgText+= '<td>' + htmlColorize(escapeHtmlText(wp.info).replaceAll("\n" , "<br>"), color) + '</td>';
-                dbgText+= '<td>' + wp.lat + '</td>';
-                dbgText+= '<td>' + wp.lng + '</td>';
-                dbgText+= '<td>' + wp.alt + '</td>';
-                dbgText+= '<td>' + wp.dist + '</td>';
-                dbgText+= '</tr>';
+                previewEditText+= '<tr>';
+                previewEditText+= '<td>' + (i + 1) + '</td>';
+                previewEditText+= '<td>' + wp.flags + '</td>';
+                previewEditText+= '<td>' + wp.type + '</td>';
+                previewEditText+= '<td>' + htmlColorize(escapeHtmlText(wp.name), color) + '</td>';
+                previewEditText+= '<td><div>';
+                previewEditText+= ' <span id="wp_ed_name_len_' + i + '">? of ?</span>';
+                previewEditText+= ' <input type="text" class="wp_edit_input" id="wp_ed_name_input_' + i + '" size="' + (gpxNameLengthLimit + 1) + '" maxlength="' + gpxNameLengthLimit + '" autocomplete="off" spellcheck="false" value="' + escapeHtmlText(wp.editedName) + '"/>&nbsp;'; // to don't used fixed value of 15
+                previewEditText+= '</div></td>'
+                previewEditText+= '</td>';
+                previewEditText+= '<td>' + htmlColorize(escapeHtmlText(wp.info).replaceAll("\n" , "<br>"), color) + '</td>';
+                previewEditText+= '<td>' + wp.lat + '</td>';
+                previewEditText+= '<td>' + wp.lng + '</td>';
+                previewEditText+= '<td>' + wp.alt + '</td>';
+                previewEditText+= '<td>' + wp.dist + '</td>';
+                previewEditText+= '</tr>';
             }
-            dbgText+= '</table>';
+            previewEditText+= '</table>';
         } else {
-            dbgText+= '<p>Hmmm, a tour without any point or highlight!?</p>';
+            previewEditText+= '<p>Hmmm, a tour without any point or highlight!?</p>';
         }
-        dbgText+= '</div>';
+        previewEditText+= '</div>';
+
+        $("body").append(previewEditText);
     }
 }
 
@@ -852,7 +874,7 @@ function addMenu() {
         { name: "OLD:B",
           selector: "#pageMountNode > div.css-v14eqb > div:nth-child(2) > div.tw-bg-canvas.lg\\:tw-bg-card.u-bg-desk-column > div.css-1u8qly9 > div > div > div > div.tw-w-full.lg\\:tw-w-3\\/5 > div > div > div > div:nth-child(2)",
           addCSS: ""
-        }
+        },
     ];
 
     for(const p of possiblePositions) {
