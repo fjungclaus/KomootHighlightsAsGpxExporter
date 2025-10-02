@@ -43,6 +43,7 @@
 * ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## History
+* 0.9.68, 2025-10-02, cosmetic changes only
 * 0.9.65, 2025-10-02
    * Fixed problem with "fetching translations" and tried to make it more reliable
    * Tried to exclude Komoot's zoom- and gallery-pages

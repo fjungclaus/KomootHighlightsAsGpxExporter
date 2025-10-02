@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.65
+// @version      0.9.68
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -391,11 +391,11 @@ function clickButtonHide(ev) {
 }
 
 
-function clickButtonDbg(ev) {
+function clickButtonPreviewEdit(ev) {
     const addClickHandlers = previewEditText == "" ? true : false; // add click handler only once!
 
     collectWaypoints();
-    createDebugText();
+    createPreviewEditText();
     $("#dialog").dialog({ autoOpen: false, maxHeight: 800, width: 1580, maxWidth: 1600, close: function() { console.log("#dialog close"); showDebug = false; } });
     showDebug = !showDebug;
     $("#dialog").dialog(showDebug ? 'open' : 'close');
@@ -499,7 +499,7 @@ function htmlColorize(txt, color) {
 
 
 // A jQuery dialog with some debug data
-function createDebugText() { // to rename
+function createPreviewEditText() {
     if (previewEditText == "") {
         previewEditText = '<div id="dialog" title="Highlights to GPX">';
         previewEditText+= '<b>';
@@ -842,12 +842,12 @@ function subEval(xpath, node)
 
 function showButtons(show) {
  if (show) {
-    $("#dbg-button").show();
+    $("#ped-button").show();
     $("#gpx-button").show();
     $("#csv-button").show();
     $("#gpx-full-button").show();
  } else {
-    $("#dbg-button").hide();
+    $("#ped-button").hide();
     $("#gpx-button").hide();
     $("#csv-button").hide();
     $("#gpx-full-button").hide();
@@ -929,10 +929,10 @@ function addMenu() {
     khMenu = document.createElement('div');
     var html;
     html = '<p><small><b><a id="hrefprj" href="https://github.com/fjungclaus/KomootHighlightsAsGpxExporter">' + S_NAME + '</a>=V' + S_VERSION + '</b>, ' + S_HANDLER + '=V' + S_HANDLER_VERSION + '</small></p>';
-    html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-Try=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms, ' + posName + ')';
+    html += '<p><small>Highlights=<span id="nrHighlights">?</span>, POIs=<span id="nrPOIs">?</span>, Menu-Retries=' + retry.toString() + ' (' + (Date.now() - tStart) + 'ms, ' + posName + ')';
     html += ',<br><span title="Nr. of highlights with imcomplete data, to be fetched on our own in background http-requests ...">Background-Fetch=<span id="bgFetch">0 of 0</span></span></small></p>';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="hide-button" title="Hide menu. Reload the page to get the menu back!">X</button>&nbsp';
-    html += ' <button class="ui-button ui-widget ui-corner-all" id="dbg-button" title="Table with some preview information about all highlights and POIs found. You can also edit POI names here ...">Preview&Edit</button>&nbsp';
+    html += ' <button class="ui-button ui-widget ui-corner-all" id="ped-button" title="Table with some preview information about all highlights and POIs found. You can also edit POI names here ...">Preview&Edit</button>&nbsp';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-button" title="Save highlights and POIs without the GPX track itself into a GPX file" >Save GPX</button>&nbsp';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="gpx-full-button" title="Save highlights and POIs plus the GPX-track in a single GPX file">Save GPX&amp;track</button>&nbsp';
     html += ' <button class="ui-button ui-widget ui-corner-all" id="csv-button" title="Save highlights and POIs as CSV.">Save CSV</button>&nbsp';
@@ -944,7 +944,7 @@ function addMenu() {
     pos.prepend(khMenu);
     showButtons(0);
     $("#hide-button").click(clickButtonHide);
-    $("#dbg-button").click(clickButtonDbg);
+    $("#ped-button").click(clickButtonPreviewEdit);
     $("#gpx-button").click(clickButtonGpx);
     $("#gpx-full-button").click(clickButtonGpx);
     $("#csv-button").click(clickButtonCSV);
