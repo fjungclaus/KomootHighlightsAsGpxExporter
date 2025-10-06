@@ -6,42 +6,6 @@
 * Might also run with Greasemonkey in Firefox, but I didn't find the time to test that until now ...
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
-## Successfully tested with ...
-- 0.9.56:
-   -  2025-09-29: Firefox 143.0.1 + Tampermonkey V5.3.3
-   -  2025-09-29: Chrome 140.0.7339.208 + Tampermonkey V5.3.3
-   -  2025-09-29: Firefox 143.0.2 on a tablet with Android 15 + Tampermonkey 5.3.3
-- 0.9.44:
-   - 2025-09-03: Firefox 142.0.1 on a tablet with Android 15 + Tampermonkey 5.3.3
-- 0.9.39:
-   - 2025-06-01: Firefox 139.0.1 + Tampermonkey V5.3.3
-   - 2025-06-01: Chrome 137.0.7151.56 + Tampermonkey V5.3.3
-   - 2025-06-01: CSV import to LibreOffice Calc 25.2.3.2
-   - 2025-06-01: GPX import into Garmin BaseCamp 4.7.5
-   - 2025-06-01: GPX import into GarminConnect (https://connect.garmin.com/modern/courses)
-- 0.9.14:
-   - 2024-10-27: Firefox 131.0.3 + Tampermonkey 5.3.1
-   - 2024-10-27: Chrome 130.0.6723.70 + Tampermonkey 5.3.1
-
-## Hints
-- If the menu buttons of this Tampermonkey scripts don't show up, reloading the page (e.g. by means of 'F5') might help
-- Since 0.9.39 there will be a yellowish bar on the Komoot page during insertion of the script's menu
-![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2016_46_19-yellowish-line-during-menu-insertion.jpg)
-- Use the button "Save as GPX (+ track)" to save highlights and POIs plus the GPX-track itself in a single GPX file
-![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2017_12_29-button-gpx-plus-track.jpg)
-- Firefox 142 + Tampermonkey on Android currently only works if you activate FF's desktop-website mode. My menu does not properly appear for the Komoot mobile website. Fix in progress ...
-
-## Todos
-* ~~Have distance across the track of the highlights in the waypoint and CSV~~
-* ~~Allow exporting waypoints plus the GPX track itself in a single GPX file~~
-* ~~Finish code for CSV export~~
-* About page
-* Help page
-* Upload some screen shots to Github
-* ~~Make highlight names editable in the preview dialog (e.g. Garmin Edge allows max. 15 chars for a waypoint's name)~~
-* Some words about installing Tampermonkey and how to add this script
-* ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
-
 ## History
 * 0.9.68, 2025-10-02, cosmetic changes only
 * 0.9.65, 2025-10-02
@@ -110,6 +74,42 @@ Fixed until their next changes ...
 * 0.5, 2021-08-30, Added timestamps to track elements
 * 0.4, 2021-08-27, Also allow exporting the tours track itself
 * 0.1, 2021-08-25, First release via Github
+
+## Successfully tested with ...
+- 0.9.56:
+   -  2025-09-29: Firefox 143.0.1 + Tampermonkey V5.3.3
+   -  2025-09-29: Chrome 140.0.7339.208 + Tampermonkey V5.3.3
+   -  2025-09-29: Firefox 143.0.2 on a tablet with Android 15 + Tampermonkey 5.3.3
+- 0.9.44:
+   - 2025-09-03: Firefox 142.0.1 on a tablet with Android 15 + Tampermonkey 5.3.3
+- 0.9.39:
+   - 2025-06-01: Firefox 139.0.1 + Tampermonkey V5.3.3
+   - 2025-06-01: Chrome 137.0.7151.56 + Tampermonkey V5.3.3
+   - 2025-06-01: CSV import to LibreOffice Calc 25.2.3.2
+   - 2025-06-01: GPX import into Garmin BaseCamp 4.7.5
+   - 2025-06-01: GPX import into GarminConnect (https://connect.garmin.com/modern/courses)
+- 0.9.14:
+   - 2024-10-27: Firefox 131.0.3 + Tampermonkey 5.3.1
+   - 2024-10-27: Chrome 130.0.6723.70 + Tampermonkey 5.3.1
+
+## Hints
+- If the menu buttons of this Tampermonkey scripts don't show up, reloading the page (e.g. by means of 'F5') might help
+- Since 0.9.39 there will be a yellowish bar on the Komoot page during insertion of the script's menu
+![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2016_46_19-yellowish-line-during-menu-insertion.jpg)
+- Use the button "Save as GPX (+ track)" to save highlights and POIs plus the GPX-track itself in a single GPX file
+![Screenshot ...](https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/blob/main/screenshots/2025-06-01%2017_12_29-button-gpx-plus-track.jpg)
+- Firefox 142 + Tampermonkey on Android currently only works if you activate FF's desktop-website mode. My menu does not properly appear for the Komoot mobile website. Fix in progress ...
+
+## Todos
+* ~~Have distance across the track of the highlights in the waypoint and CSV~~
+* ~~Allow exporting waypoints plus the GPX track itself in a single GPX file~~
+* ~~Finish code for CSV export~~
+* About page
+* Help page
+* Upload some screen shots to Github
+* ~~Make highlight names editable in the preview dialog (e.g. Garmin Edge allows max. 15 chars for a waypoint's name)~~
+* Some words about installing Tampermonkey and how to add this script
+* ~~Put link to KomootHighlightsAsGpxExporter @ github into the status element~~
 
 ## Screenshots
 ### Preview
