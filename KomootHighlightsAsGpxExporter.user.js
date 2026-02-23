@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.68
+// @version      0.9.70
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -9,6 +9,7 @@
 // @updateURL    https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/raw/refs/heads/main/KomootHighlightsAsGpxExporter.user.js
 // @license      GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @match        https://*.komoot.com/*/tour/*
+// @match        https://*.komoot.com/*/smarttour/*
 // @match        https://*.komoot.com/tour/*
 // @match        https://*.komoot.de/tour/*
 // @exclude      https://*.komoot.de/tour/*/edit
@@ -863,6 +864,10 @@ function addMenu() {
 
     // Where to prepend the menu? Selector "per copy JS path" ...
     const possiblePositions = [
+        { name: "NEW:B", /* 2026-02-23 */
+          selector: "#pageMountNode > div > div.css-12hlzpf > div > div > div.css-147pytd > div.css-17cyh89",
+          addCSS: ""
+        },
         { name: "NEW:A",
           selector: "#pageMountNode > div > div.css-mwvj2n > div > div.css-147pytd > div.css-17cyh89",
           addCSS: ""
