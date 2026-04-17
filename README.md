@@ -7,6 +7,8 @@
 * There is also the possibility to export the Komoot highlights as comma separated values, to be imported in programs like OpenOffice Calc. This might be used to create roadbooks, etc.
 
 ## History
+* 0.9.72, 2026-04-17
+   * Improved handling for "POI" with missing data
 * 0.9.70, 2026-02-23
    * Added new include url *.komoot.com/*/smarttour/*
    * Adapted menu insertion path to new Komoot layout

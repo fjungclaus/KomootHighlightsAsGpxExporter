@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KomootHighlightsAsGpxExporter
 // @namespace    https://github.com/fjungclaus
-// @version      0.9.70
+// @version      0.9.72
 // @description  Save Komoot Tour Highlights as GPX-File
 // @author       Frank Jungclaus, DL4XJ
 // @supportURL   https://github.com/fjungclaus/KomootHighlightsAsGpxExporter/issues
@@ -690,7 +690,7 @@ function checkWaypoints() {
                 let mocRef = item.links.reference.href; // .replace("https://", "//");
                 // let mocData = item.store.moc[mocRef];
                 let id = mocRef.split('/').pop();
-                console.log(cnt + ": waypoint Ref="+ mocRef + ", ID=" + id + " without a name ...");
+                console.log("i=" + i + ":cnt=" + cnt + ": waypoint Ref="+ mocRef + ", ID=" + id + " without a name ...");
                 bgData.nrProblems++;
                 bgData.waypoints.push({ id: id, wpItemIndex: i, href: mocRef, state: 0 });
                 fetchData(bgData.waypoints.at(-1)); // done in background
@@ -715,6 +715,7 @@ function collectWaypoints() {
                 let waypoint = { flags: "", info: "" };
                 const item = tour._embedded.way_points._embedded.items[i];
 
+                console.log("collectWP: i=" + i + " type=" + item.attributes.type);
                 if (item.attributes.type == "highlight") {
                     let highlight;
 
@@ -768,7 +769,16 @@ function collectWaypoints() {
                     gpxx.meta.nrHighlights.is++;
 
                 } else if (item.attributes.type == "poi") {
-                    const poi = item._syncedAttributes._embedded.reference;
+                    let poi;
+
+                    if (item._syncedAttributes?._embedded?.reference) {
+                        poi = item._syncedAttributes?._embedded?.reference;
+                    } else {
+                        const bgp = bgData.waypoints.find(ele => (ele.wpItemIndex == i));
+                        poi = bgp.data;
+                        waypoint.flags += "b"; // 'b' => using background POI data
+                    }
+
                     waypoint.type = "POI";
                     waypoint.name = poi.name;
                     waypoint.editedName = poi.name;
@@ -790,6 +800,8 @@ function collectWaypoints() {
                     gpxx.waypoints.push(waypoint);
                     gpxx.meta.nrPOIs.is++;
 
+                } else {
+                    console.log("*** OTHER TYPE:" + item.attributes.type + ":" + item._syncedAttributes._embedded.reference._links.self.href);
                 }
             }
         }
